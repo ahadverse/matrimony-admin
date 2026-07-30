@@ -1,0 +1,132 @@
+export type Gender = 'male' | 'female';
+export type UserRole = 'user' | 'admin';
+export type UserStatus = 'active' | 'banned';
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
+export type TransactionType = 'topup' | 'view_unlock' | 'refund' | 'admin_adjust';
+export type TransactionStatus = 'pending' | 'success' | 'failed';
+export type PaymentProvider = 'bkash' | 'nagad';
+export type VerificationStatus = 'pending' | 'approved' | 'rejected';
+
+export interface AuthUser {
+  id: string;
+  phone: string;
+  gender: Gender;
+  role: UserRole;
+  status: UserStatus;
+  walletBalance: number;
+}
+
+export interface LoginResponse {
+  accessToken: string;
+  user: AuthUser;
+}
+
+export interface Photo {
+  id: string;
+  url: string;
+  blurredUrl: string | null;
+  isPrimary: boolean;
+  order: number;
+}
+
+export interface ProfileOwner {
+  id: string;
+  phone: string;
+  gender: Gender;
+  dob: string;
+  role?: UserRole;
+  status?: UserStatus;
+  walletBalance?: number;
+  createdAt?: string;
+}
+
+export interface Profile {
+  id: string;
+  userId: string;
+  name: string;
+  district: string | null;
+  subDistrict: string | null;
+  bio: string | null;
+  profession: string | null;
+  education: string | null;
+  religion: string | null;
+  heightCm: number | null;
+  maritalStatus: string | null;
+  approvalStatus: ApprovalStatus;
+  rejectionReason: string | null;
+  isVerified: boolean;
+  verifiedAt: string | null;
+  photos: Photo[];
+  user: ProfileOwner;
+  createdAt: string;
+}
+
+export interface AdminUserRecord {
+  id: string;
+  phone: string;
+  gender: Gender;
+  dob: string;
+  role: UserRole;
+  status: UserStatus;
+  walletBalance: number;
+  languagePref: string;
+  profile: Omit<Profile, 'user' | 'photos'> | null;
+  createdAt: string;
+}
+
+export interface WalletTransaction {
+  id: string;
+  userId: string;
+  type: TransactionType;
+  amount: number;
+  balanceAfter: number;
+  provider: PaymentProvider | null;
+  status: TransactionStatus;
+  createdAt: string;
+}
+
+export interface AdminSettings {
+  id: string;
+  profileViewCost: number;
+  minTopupAmount: number;
+  statVerifiedMembers: string;
+  statMatchesMade: string;
+  statDistrictsCovered: string;
+  statAverageRating: string;
+  statProfilesReviewedPercent: string;
+  updatedAt: string;
+}
+
+export interface VerificationSubmissionUser {
+  id: string;
+  phone: string;
+  name: string | null;
+  isVerified: boolean;
+}
+
+export interface VerificationSubmission {
+  id: string;
+  userId: string;
+  nidNumber: string;
+  selfieUrl: string;
+  status: VerificationStatus;
+  rejectionReason: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  user: VerificationSubmissionUser | null;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  pendingApprovals: number;
+  todaySignups: number;
+  totalRevenue: number;
+}
+
+export interface Paginated<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
