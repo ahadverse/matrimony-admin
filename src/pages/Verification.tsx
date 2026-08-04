@@ -2,16 +2,24 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
-import { approveVerification, getVerificationSubmissions, rejectVerification } from '../api/admin';
+import {
+  approveVerification,
+  exportVerifications,
+  getVerificationSubmissions,
+  rejectVerification,
+} from '../api/admin';
 import { resolveMediaUrl } from '../api/client';
-import type { VerificationStatus, VerificationSubmission } from '../api/types';
+import type { SortOrder, VerificationStatus, VerificationSubmission } from '../api/types';
 import { Badge } from '../components/Badge';
 import { Pagination } from '../components/Pagination';
 import { Modal } from '../components/Modal';
+import { SearchInput } from '../components/SearchInput';
+import { DownloadIcon, SpinnerIcon } from '../components/icons';
 
 const PAGE_SIZE = 10;
 
 type StatusFilter = 'all' | VerificationStatus;
+type SortChoice = 'createdAt_ASC' | 'createdAt_DESC' | 'reviewedAt_DESC';
 
 const FILTERS: { value: StatusFilter; label: string }[] = [
   { value: 'pending', label: 'Pending' },
@@ -20,24 +28,42 @@ const FILTERS: { value: StatusFilter; label: string }[] = [
   { value: 'all', label: 'All' },
 ];
 
+const SORT_OPTIONS: { value: SortChoice; label: string }[] = [
+  { value: 'createdAt_ASC', label: 'Oldest first' },
+  { value: 'createdAt_DESC', label: 'Newest first' },
+  { value: 'reviewedAt_DESC', label: 'Recently reviewed' },
+];
+
 export function Verification() {
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<StatusFilter>('pending');
+  const [search, setSearch] = useState('');
+  const [sortChoice, setSortChoice] = useState<SortChoice>('createdAt_ASC');
   const [rejectTarget, setRejectTarget] = useState<VerificationSubmission | null>(null);
   const [viewTarget, setViewTarget] = useState<VerificationSubmission | null>(null);
   const queryClient = useQueryClient();
 
   const statusParam = filter === 'all' ? undefined : filter;
+  const [sortBy, sortOrder] = sortChoice.split('_') as [string, SortOrder];
 
   const query = useQuery({
-    queryKey: ['admin', 'verifications', page, filter],
-    queryFn: () => getVerificationSubmissions(page, PAGE_SIZE, statusParam),
+    queryKey: ['admin', 'verifications', page, filter, search, sortChoice],
+    queryFn: () =>
+      getVerificationSubmissions({
+        page,
+        pageSize: PAGE_SIZE,
+        status: statusParam,
+        search: search || undefined,
+        sortBy,
+        sortOrder,
+      }),
     placeholderData: (prev) => prev,
   });
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ['admin', 'verifications'] });
     queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+    queryClient.invalidateQueries({ queryKey: ['admin', 'user-detail'] });
   }
 
   const approveMutation = useMutation({
@@ -59,8 +85,24 @@ export function Verification() {
     onError: () => toast.error('Failed to reject submission'),
   });
 
+  const exportMutation = useMutation({
+    mutationFn: () => exportVerifications(statusParam),
+    onSuccess: () => toast.success('Export downloaded'),
+    onError: (error: unknown) => {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      toast.error(
+        status === 404 ? 'No submissions match this filter to export' : 'Export failed. Please try again.',
+      );
+    },
+  });
+
   function handleFilterChange(value: StatusFilter) {
     setFilter(value);
+    setPage(1);
+  }
+
+  function handleSearch(value: string) {
+    setSearch(value);
     setPage(1);
   }
 
@@ -76,22 +118,61 @@ export function Verification() {
           </p>
         </div>
 
-        <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
-          {FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => handleFilterChange(f.value)}
-              className={clsx(
-                'rounded-md px-3 py-1.5 text-sm font-medium',
-                filter === f.value ? 'bg-primary text-white' : 'text-text-muted hover:text-text',
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
+            {FILTERS.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => handleFilterChange(f.value)}
+                className={clsx(
+                  'rounded-md px-3 py-1.5 text-sm font-medium',
+                  filter === f.value ? 'bg-primary text-white' : 'text-text-muted hover:text-text',
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => exportMutation.mutate()}
+            disabled={exportMutation.isPending}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-text-muted hover:enabled:bg-surface-raised hover:enabled:text-text disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <DownloadIcon className="h-4 w-4" />
+            {exportMutation.isPending ? 'Exporting…' : 'Export'}
+          </button>
         </div>
       </header>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <SearchInput
+          onSearch={handleSearch}
+          placeholder="Search by name, phone or NID…"
+          className="w-full sm:w-72"
+        />
+        <select
+          value={sortChoice}
+          onChange={(e) => {
+            setSortChoice(e.target.value as SortChoice);
+            setPage(1);
+          }}
+          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+        >
+          {SORT_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        {query.isFetching && !query.isLoading && (
+          <span className="flex items-center gap-1.5 text-xs text-text-faint">
+            <SpinnerIcon className="h-3.5 w-3.5 animate-spin" />
+            Updating…
+          </span>
+        )}
+      </div>
 
       {query.isError && (
         <p className="mb-4 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
@@ -107,7 +188,12 @@ export function Verification() {
           <p className="mt-1 text-sm text-text-faint">No submissions match this filter.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div
+          className={clsx(
+            'space-y-3 transition-opacity',
+            query.isFetching && !query.isLoading && 'opacity-60',
+          )}
+        >
           {submissions.map((submission) => (
             <SubmissionCard
               key={submission.id}

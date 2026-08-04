@@ -1,13 +1,26 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import clsx from 'clsx';
 import { approveProfile, getPendingProfiles, rejectProfile } from '../api/admin';
 import { resolveMediaUrl } from '../api/client';
-import type { Profile } from '../api/types';
+import type { Gender, Profile, SortOrder } from '../api/types';
 import { Pagination } from '../components/Pagination';
 import { Modal } from '../components/Modal';
+import { SearchInput } from '../components/SearchInput';
+import { SpinnerIcon } from '../components/icons';
 
 const PAGE_SIZE = 10;
+
+type GenderFilter = 'all' | Gender;
+type SortChoice = 'createdAt_ASC' | 'createdAt_DESC' | 'name_ASC' | 'name_DESC';
+
+const SORT_OPTIONS: { value: SortChoice; label: string }[] = [
+  { value: 'createdAt_ASC', label: 'Oldest first' },
+  { value: 'createdAt_DESC', label: 'Newest first' },
+  { value: 'name_ASC', label: 'Name A–Z' },
+  { value: 'name_DESC', label: 'Name Z–A' },
+];
 
 function calculateAge(dob: string | undefined): number | null {
   if (!dob) return null;
@@ -19,12 +32,25 @@ function calculateAge(dob: string | undefined): number | null {
 
 export function Approvals() {
   const [page, setPage] = useState(1);
+  const [genderFilter, setGenderFilter] = useState<GenderFilter>('all');
+  const [search, setSearch] = useState('');
+  const [sortChoice, setSortChoice] = useState<SortChoice>('createdAt_ASC');
   const [rejectTarget, setRejectTarget] = useState<Profile | null>(null);
   const queryClient = useQueryClient();
 
+  const [sortBy, sortOrder] = sortChoice.split('_') as [string, SortOrder];
+
   const query = useQuery({
-    queryKey: ['admin', 'profiles', 'pending', page],
-    queryFn: () => getPendingProfiles(page, PAGE_SIZE),
+    queryKey: ['admin', 'profiles', 'pending', page, genderFilter, search, sortChoice],
+    queryFn: () =>
+      getPendingProfiles({
+        page,
+        pageSize: PAGE_SIZE,
+        gender: genderFilter === 'all' ? undefined : genderFilter,
+        search: search || undefined,
+        sortBy,
+        sortOrder,
+      }),
     placeholderData: (prev) => prev,
   });
 
@@ -52,6 +78,11 @@ export function Approvals() {
     onError: () => toast.error('Failed to reject profile'),
   });
 
+  function handleSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
   const profiles = query.data?.items ?? [];
 
   return (
@@ -62,6 +93,46 @@ export function Approvals() {
           Review new profiles before they go live on the platform
         </p>
       </header>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <SearchInput
+          onSearch={handleSearch}
+          placeholder="Search by name or phone…"
+          className="w-full sm:w-72"
+        />
+        <select
+          value={genderFilter}
+          onChange={(e) => {
+            setGenderFilter(e.target.value as GenderFilter);
+            setPage(1);
+          }}
+          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+        >
+          <option value="all">All genders</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+        </select>
+        <select
+          value={sortChoice}
+          onChange={(e) => {
+            setSortChoice(e.target.value as SortChoice);
+            setPage(1);
+          }}
+          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+        >
+          {SORT_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        {query.isFetching && !query.isLoading && (
+          <span className="flex items-center gap-1.5 text-xs text-text-faint">
+            <SpinnerIcon className="h-3.5 w-3.5 animate-spin" />
+            Updating…
+          </span>
+        )}
+      </div>
 
       {query.isError && (
         <p className="mb-4 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
@@ -74,10 +145,19 @@ export function Approvals() {
       ) : profiles.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-surface py-16 text-center">
           <p className="text-sm font-medium text-text">All caught up</p>
-          <p className="mt-1 text-sm text-text-faint">There are no profiles awaiting review.</p>
+          <p className="mt-1 text-sm text-text-faint">
+            {search || genderFilter !== 'all'
+              ? 'No profiles match this search or filter.'
+              : 'There are no profiles awaiting review.'}
+          </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div
+          className={clsx(
+            'space-y-3 transition-opacity',
+            query.isFetching && !query.isLoading && 'opacity-60',
+          )}
+        >
           {profiles.map((profile) => (
             <ApprovalCard
               key={profile.id}

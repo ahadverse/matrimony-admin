@@ -2,10 +2,13 @@ import { apiClient } from './client';
 import type {
   AdminSettings,
   AdminStats,
+  AdminUserDetail,
   AdminUserRecord,
+  Gender,
   LoginResponse,
   Paginated,
   Profile,
+  SortOrder,
   UserStatus,
   VerificationStatus,
   VerificationSubmission,
@@ -20,9 +23,20 @@ export function getStats(): Promise<AdminStats> {
   return apiClient.get<AdminStats>('/admin/stats').then((r) => r.data);
 }
 
-export function getPendingProfiles(page: number, pageSize: number): Promise<Paginated<Profile>> {
+export interface ListPendingProfilesParams {
+  page: number;
+  pageSize: number;
+  gender?: Gender;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: SortOrder;
+}
+
+export function getPendingProfiles(
+  params: ListPendingProfilesParams,
+): Promise<Paginated<Profile>> {
   return apiClient
-    .get<Paginated<Profile>>('/admin/profiles/pending', { params: { page, pageSize } })
+    .get<Paginated<Profile>>('/admin/profiles/pending', { params })
     .then((r) => r.data);
 }
 
@@ -34,13 +48,20 @@ export function rejectProfile(id: string, reason: string): Promise<void> {
   return apiClient.post(`/admin/profiles/${id}/reject`, { reason }).then(() => undefined);
 }
 
+export interface ListVerificationSubmissionsParams {
+  page: number;
+  pageSize: number;
+  status?: VerificationStatus;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: SortOrder;
+}
+
 export function getVerificationSubmissions(
-  page: number,
-  pageSize: number,
-  status?: VerificationStatus,
+  params: ListVerificationSubmissionsParams,
 ): Promise<Paginated<VerificationSubmission>> {
   return apiClient
-    .get<Paginated<VerificationSubmission>>('/admin/verifications', { params: { page, pageSize, status } })
+    .get<Paginated<VerificationSubmission>>('/admin/verifications', { params })
     .then((r) => r.data);
 }
 
@@ -52,14 +73,49 @@ export function rejectVerification(id: string, reason: string): Promise<void> {
   return apiClient.post(`/admin/verifications/${id}/reject`, { reason }).then(() => undefined);
 }
 
-export function getUsers(
-  page: number,
-  pageSize: number,
-  status?: UserStatus,
-): Promise<Paginated<AdminUserRecord>> {
-  return apiClient
-    .get<Paginated<AdminUserRecord>>('/admin/users', { params: { page, pageSize, status } })
-    .then((r) => r.data);
+function parseExportFilename(contentDisposition: unknown, fallback: string): string {
+  if (typeof contentDisposition !== 'string') return fallback;
+  const match = /filename="?([^";]+)"?/.exec(contentDisposition);
+  return match?.[1] ?? fallback;
+}
+
+/** Downloads the verification-documents ZIP (one folder per user) via an authenticated blob fetch. */
+export async function exportVerifications(status?: VerificationStatus): Promise<void> {
+  const res = await apiClient.get('/admin/verifications/export', {
+    params: status ? { status } : undefined,
+    responseType: 'blob',
+  });
+  const filename = parseExportFilename(
+    res.headers['content-disposition'],
+    `verifications-export-${new Date().toISOString().slice(0, 10)}.zip`,
+  );
+  const url = URL.createObjectURL(res.data as Blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+export interface ListUsersParams {
+  page: number;
+  pageSize: number;
+  status?: UserStatus;
+  gender?: Gender;
+  verified?: boolean;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: SortOrder;
+}
+
+export function getUsers(params: ListUsersParams): Promise<Paginated<AdminUserRecord>> {
+  return apiClient.get<Paginated<AdminUserRecord>>('/admin/users', { params }).then((r) => r.data);
+}
+
+export function getUserDetail(id: string): Promise<AdminUserDetail> {
+  return apiClient.get<AdminUserDetail>(`/admin/users/${id}`).then((r) => r.data);
 }
 
 export function banUser(id: string): Promise<void> {
@@ -71,15 +127,29 @@ export function unbanUser(id: string): Promise<void> {
 }
 
 export function adjustWallet(id: string, amount: number, reason?: string): Promise<void> {
-  return apiClient.post(`/admin/users/${id}/wallet-adjust`, { amount, reason }).then(() => undefined);
+  return apiClient
+    .post(`/admin/users/${id}/wallet-adjust`, { amount, reason })
+    .then(() => undefined);
+}
+
+export interface ListTransactionsParams {
+  page: number;
+  pageSize: number;
+  userId?: string;
+  type?: string;
+  status?: string;
+  search?: string;
+  from?: string;
+  to?: string;
+  sortBy?: string;
+  sortOrder?: SortOrder;
 }
 
 export function getTransactions(
-  page: number,
-  pageSize: number,
+  params: ListTransactionsParams,
 ): Promise<Paginated<WalletTransaction>> {
   return apiClient
-    .get<Paginated<WalletTransaction>>('/admin/transactions', { params: { page, pageSize } })
+    .get<Paginated<WalletTransaction>>('/admin/transactions', { params })
     .then((r) => r.data);
 }
 

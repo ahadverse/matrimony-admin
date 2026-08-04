@@ -2,10 +2,11 @@ export type Gender = 'male' | 'female';
 export type UserRole = 'user' | 'admin';
 export type UserStatus = 'active' | 'banned';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
-export type TransactionType = 'topup' | 'view_unlock' | 'refund' | 'admin_adjust';
+export type TransactionType = 'topup' | 'view_unlock' | 'refund' | 'admin_adjust' | 'spotlight';
 export type TransactionStatus = 'pending' | 'success' | 'failed';
 export type PaymentProvider = 'bkash' | 'nagad';
 export type VerificationStatus = 'pending' | 'approved' | 'rejected';
+export type SortOrder = 'ASC' | 'DESC';
 
 export interface AuthUser {
   id: string;
@@ -52,10 +53,31 @@ export interface Profile {
   religion: string | null;
   heightCm: number | null;
   maritalStatus: string | null;
+  fatherOccupation: string | null;
+  motherOccupation: string | null;
+  siblingsCount: number | null;
+  bloodGroup: string | null;
+  complexion: string | null;
+  monthlyIncome: number | null;
+  companyName: string | null;
+  presentAddress: string | null;
+  permanentAddress: string | null;
   approvalStatus: ApprovalStatus;
   rejectionReason: string | null;
   isVerified: boolean;
   verifiedAt: string | null;
+  motherTongue: string | null;
+  englishComfort: string | null;
+  residencyStatus: string | null;
+  growUpIn: string | null;
+  collegeUniversity: string | null;
+  partnerPreferences: string | null;
+  hobbies: string | null;
+  familyFinancialStatus: string | null;
+  bodyType: string | null;
+  marriageTimeline: string | null;
+  numberOfSisters: number | null;
+  numberOfBrothers: number | null;
   photos: Photo[];
   user: ProfileOwner;
   createdAt: string;
@@ -83,6 +105,7 @@ export interface WalletTransaction {
   provider: PaymentProvider | null;
   status: TransactionStatus;
   createdAt: string;
+  user?: { id: string; phone: string; name: string | null } | null;
 }
 
 export interface AdminSettings {
@@ -115,6 +138,39 @@ export interface VerificationSubmission {
   reviewedAt: string | null;
   createdAt: string;
   user: VerificationSubmissionUser | null;
+}
+
+/** Bare identity-verification record as returned inline by the user detail endpoint (no nested `user`). */
+export interface IdentityVerificationRecord {
+  id: string;
+  userId: string;
+  nidNumber: string;
+  selfieUrl: string;
+  status: VerificationStatus;
+  rejectionReason: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminUserDetailUser {
+  id: string;
+  phone: string;
+  gender: Gender;
+  dob: string | null;
+  role: UserRole;
+  status: UserStatus;
+  walletBalance: number;
+  languagePref: string;
+  lastActiveAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminUserDetail {
+  user: AdminUserDetailUser;
+  profile: Profile | null;
+  verification: IdentityVerificationRecord | null;
+  recentTransactions: WalletTransaction[];
 }
 
 export interface AdminStats {

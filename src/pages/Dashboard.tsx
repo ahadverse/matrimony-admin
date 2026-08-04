@@ -23,7 +23,7 @@ export function Dashboard() {
   // Pulled purely to derive a real revenue-by-day chart; no synthetic data.
   const transactionsQuery = useQuery({
     queryKey: ['admin', 'transactions', 'for-dashboard-chart'],
-    queryFn: () => getTransactions(1, 200),
+    queryFn: () => getTransactions({ page: 1, pageSize: 200 }),
   });
 
   const revenueByDay = useMemo(() => {
