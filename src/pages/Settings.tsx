@@ -18,6 +18,7 @@ export function Settings() {
   const [statDistrictsCovered, setStatDistrictsCovered] = useState('');
   const [statAverageRating, setStatAverageRating] = useState('');
   const [statProfilesReviewedPercent, setStatProfilesReviewedPercent] = useState('');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
 
   useEffect(() => {
     if (query.data) {
@@ -28,6 +29,7 @@ export function Settings() {
       setStatDistrictsCovered(query.data.statDistrictsCovered);
       setStatAverageRating(query.data.statAverageRating);
       setStatProfilesReviewedPercent(query.data.statProfilesReviewedPercent);
+      setWhatsappNumber(query.data.whatsappNumber ?? '');
     }
   }, [query.data]);
 
@@ -48,7 +50,8 @@ export function Settings() {
       statMatchesMade !== query.data.statMatchesMade ||
       statDistrictsCovered !== query.data.statDistrictsCovered ||
       statAverageRating !== query.data.statAverageRating ||
-      statProfilesReviewedPercent !== query.data.statProfilesReviewedPercent);
+      statProfilesReviewedPercent !== query.data.statProfilesReviewedPercent ||
+      whatsappNumber !== (query.data.whatsappNumber ?? ''));
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -63,6 +66,11 @@ export function Settings() {
       toast.error('Minimum top-up amount must be a valid non-negative number');
       return;
     }
+    const trimmedWhatsapp = whatsappNumber.trim();
+    if (trimmedWhatsapp && !/^\+?[1-9]\d{7,14}$/.test(trimmedWhatsapp)) {
+      toast.error('WhatsApp number must be digits only, optionally prefixed with +, e.g. +8801XXXXXXXXX');
+      return;
+    }
 
     mutation.mutate({
       profileViewCost: cost,
@@ -72,6 +80,7 @@ export function Settings() {
       statDistrictsCovered,
       statAverageRating,
       statProfilesReviewedPercent,
+      ...(trimmedWhatsapp ? { whatsappNumber: trimmedWhatsapp } : {}),
     });
   }
 
@@ -84,6 +93,7 @@ export function Settings() {
     setStatDistrictsCovered(query.data.statDistrictsCovered);
     setStatAverageRating(query.data.statAverageRating);
     setStatProfilesReviewedPercent(query.data.statProfilesReviewedPercent);
+    setWhatsappNumber(query.data.whatsappNumber ?? '');
   }
 
   return (
@@ -147,6 +157,26 @@ export function Settings() {
             />
             <p className="mt-1.5 text-xs text-text-faint">
               Smallest wallet top-up a user is allowed to make via bKash or Nagad.
+            </p>
+          </div>
+
+          <div className="border-t border-border pt-5">
+            <label
+              htmlFor="whatsappNumber"
+              className="mb-1.5 block text-sm font-medium text-text-muted"
+            >
+              WhatsApp contact number
+            </label>
+            <input
+              id="whatsappNumber"
+              type="tel"
+              placeholder="+8801XXXXXXXXX"
+              value={whatsappNumber}
+              onChange={(e) => setWhatsappNumber(e.target.value)}
+              className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2.5 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <p className="mt-1.5 text-xs text-text-faint">
+              Number the public site's WhatsApp float button links to, in international format.
             </p>
           </div>
 

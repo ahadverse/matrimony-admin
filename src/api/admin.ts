@@ -195,6 +195,7 @@ export function updateSettings(payload: {
   statDistrictsCovered?: string;
   statAverageRating?: string;
   statProfilesReviewedPercent?: string;
+  whatsappNumber?: string;
 }): Promise<AdminSettings> {
   return apiClient.patch<AdminSettings>('/admin/settings', payload).then((r) => r.data);
 }
