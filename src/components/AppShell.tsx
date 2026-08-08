@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import { useAuth } from '../auth/AuthContext';
 import {
   ApprovalsIcon,
+  AssistantIcon,
   DashboardIcon,
   LogoutIcon,
   SettingsIcon,
@@ -18,6 +19,7 @@ const NAV_ITEMS = [
   { to: '/approvals', label: 'Approvals', icon: ApprovalsIcon },
   { to: '/verification', label: 'Verification', icon: VerificationIcon },
   { to: '/users', label: 'Users', icon: UsersIcon },
+  { to: '/assistant-requests', label: 'Assistant Requests', icon: AssistantIcon },
   { to: '/transactions', label: 'Transactions', icon: TransactionsIcon },
   { to: '/sms', label: 'Send SMS', icon: SmsIcon },
   { to: '/settings', label: 'Settings', icon: SettingsIcon },

@@ -151,6 +151,15 @@ export function SpinnerIcon(props: IconProps) {
   );
 }
 
+export function AssistantIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 21s-7-4.35-9.5-8.8C.8 8.4 2.7 5 6 5c1.9 0 3.3 1 4 2.3.7-1.3 2.1-2.3 4-2.3 3.3 0 5.2 3.4 3.5 7.2C19 16.65 12 21 12 21Z" />
+      <path d="M9 11.5h6M9 14h4" />
+    </svg>
+  );
+}
+
 export function SortIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>

@@ -28,6 +28,14 @@ function calculateAge(dob: string | null | undefined): number | null {
   return Math.floor((Date.now() - birth.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
 }
 
+function formatHeight(cm: number | null | undefined): string | null {
+  if (cm == null) return null;
+  const totalInches = Math.round(cm / 2.54);
+  const feet = Math.floor(totalInches / 12);
+  const inches = totalInches % 12;
+  return `${feet} feet ${inches} inch`;
+}
+
 const APPROVAL_TONE: Record<string, BadgeTone> = {
   approved: 'success',
   rejected: 'danger',
@@ -43,8 +51,8 @@ const VERIFICATION_TONE: Record<string, BadgeTone> = {
 interface UserDetailModalProps {
   userId: string;
   onClose: () => void;
-  onBan: (user: AdminUserDetailUser) => void;
-  onAddBalance: (user: AdminUserDetailUser) => void;
+  onBan?: (user: AdminUserDetailUser) => void;
+  onAddBalance?: (user: AdminUserDetailUser) => void;
 }
 
 export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDetailModalProps) {
@@ -75,25 +83,29 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
             >
               Close
             </button>
-            <button
-              type="button"
-              onClick={() => onAddBalance(data.user)}
-              className="rounded-lg bg-primary/15 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/25"
-            >
-              Add balance
-            </button>
-            <button
-              type="button"
-              onClick={() => onBan(data.user)}
-              className={clsx(
-                'rounded-lg px-4 py-2 text-sm font-semibold',
-                data.user.status === 'banned'
-                  ? 'bg-success/15 text-success hover:bg-success/25'
-                  : 'bg-danger/15 text-danger hover:bg-danger/25',
-              )}
-            >
-              {data.user.status === 'banned' ? 'Unban user' : 'Ban user'}
-            </button>
+            {onAddBalance && (
+              <button
+                type="button"
+                onClick={() => onAddBalance(data.user)}
+                className="rounded-lg bg-primary/15 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/25"
+              >
+                Add balance
+              </button>
+            )}
+            {onBan && (
+              <button
+                type="button"
+                onClick={() => onBan(data.user)}
+                className={clsx(
+                  'rounded-lg px-4 py-2 text-sm font-semibold',
+                  data.user.status === 'banned'
+                    ? 'bg-success/15 text-success hover:bg-success/25'
+                    : 'bg-danger/15 text-danger hover:bg-danger/25',
+                )}
+              >
+                {data.user.status === 'banned' ? 'Unban user' : 'Ban user'}
+              </button>
+            )}
           </>
         ) : undefined
       }
@@ -180,7 +192,8 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
                     value={[profile.subDistrict, profile.district].filter(Boolean).join(', ')}
                   />
                   <Field label="Marital status" value={profile.maritalStatus} />
-                  <Field label="Height" value={profile.heightCm ? `${profile.heightCm} cm` : null} />
+                  <Field label="Profile created by" value={profile.profileCreatedBy} />
+                  <Field label="Height" value={formatHeight(profile.heightCm)} />
                   <Field label="Blood group" value={profile.bloodGroup} />
                   <Field label="Complexion" value={profile.complexion} />
                   <Field label="Body type" value={profile.bodyType} />
@@ -218,7 +231,6 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
                     }
                   />
                   <Field label="Family financial status" value={profile.familyFinancialStatus} />
-                  <Field label="Marriage timeline" value={profile.marriageTimeline} />
                 </Grid>
               </Section>
 

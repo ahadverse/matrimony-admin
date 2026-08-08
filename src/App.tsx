@@ -7,6 +7,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Approvals } from './pages/Approvals';
 import { Verification } from './pages/Verification';
 import { Users } from './pages/Users';
+import { AssistantRequests } from './pages/AssistantRequests';
 import { Transactions } from './pages/Transactions';
 import { SendSms } from './pages/SendSms';
 import { Settings } from './pages/Settings';
@@ -53,6 +54,16 @@ function App() {
             <ProtectedRoute>
               <AppShell>
                 <Users />
+              </AppShell>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/assistant-requests"
+          element={
+            <ProtectedRoute>
+              <AppShell>
+                <AssistantRequests />
               </AppShell>
             </ProtectedRoute>
           }

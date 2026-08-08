@@ -4,6 +4,8 @@ import type {
   AdminStats,
   AdminUserDetail,
   AdminUserRecord,
+  AssistantRequest,
+  AssistantRequestStatus,
   Gender,
   LoginResponse,
   Paginated,
@@ -151,6 +153,30 @@ export function getTransactions(
   return apiClient
     .get<Paginated<WalletTransaction>>('/admin/transactions', { params })
     .then((r) => r.data);
+}
+
+export interface ListAssistantRequestsParams {
+  page: number;
+  pageSize: number;
+  status?: AssistantRequestStatus;
+  search?: string;
+}
+
+export function getAssistantRequests(
+  params: ListAssistantRequestsParams,
+): Promise<Paginated<AssistantRequest>> {
+  return apiClient
+    .get<Paginated<AssistantRequest>>('/admin/assistant-requests', { params })
+    .then((r) => r.data);
+}
+
+export function updateAssistantRequestStatus(
+  id: string,
+  status: AssistantRequestStatus,
+): Promise<void> {
+  return apiClient
+    .patch(`/admin/assistant-requests/${id}/status`, { status })
+    .then(() => undefined);
 }
 
 export function getSettings(): Promise<AdminSettings> {

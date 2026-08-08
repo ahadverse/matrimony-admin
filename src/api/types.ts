@@ -6,7 +6,18 @@ export type TransactionType = 'topup' | 'view_unlock' | 'refund' | 'admin_adjust
 export type TransactionStatus = 'pending' | 'success' | 'failed';
 export type PaymentProvider = 'bkash' | 'nagad';
 export type VerificationStatus = 'pending' | 'approved' | 'rejected';
+export type AssistantRequestStatus = 'pending' | 'contacted' | 'closed';
 export type SortOrder = 'ASC' | 'DESC';
+
+export interface AssistantRequest {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  profileId: string | null;
+  status: AssistantRequestStatus;
+  createdAt: string;
+}
 
 export interface AuthUser {
   id: string;
@@ -53,6 +64,7 @@ export interface Profile {
   religion: string | null;
   heightCm: number | null;
   maritalStatus: string | null;
+  profileCreatedBy: string | null;
   fatherOccupation: string | null;
   motherOccupation: string | null;
   siblingsCount: number | null;
@@ -75,7 +87,6 @@ export interface Profile {
   hobbies: string | null;
   familyFinancialStatus: string | null;
   bodyType: string | null;
-  marriageTimeline: string | null;
   numberOfSisters: number | null;
   numberOfBrothers: number | null;
   photos: Photo[];

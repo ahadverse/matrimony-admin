@@ -8,6 +8,7 @@ import type { Gender, Profile, SortOrder } from '../api/types';
 import { Pagination } from '../components/Pagination';
 import { Modal } from '../components/Modal';
 import { SearchInput } from '../components/SearchInput';
+import { UserDetailModal } from '../components/UserDetailModal';
 import { SpinnerIcon } from '../components/icons';
 
 const PAGE_SIZE = 10;
@@ -36,6 +37,7 @@ export function Approvals() {
   const [search, setSearch] = useState('');
   const [sortChoice, setSortChoice] = useState<SortChoice>('createdAt_ASC');
   const [rejectTarget, setRejectTarget] = useState<Profile | null>(null);
+  const [detailUserId, setDetailUserId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const [sortBy, sortOrder] = sortChoice.split('_') as [string, SortOrder];
@@ -165,6 +167,7 @@ export function Approvals() {
               isApproving={approveMutation.isPending && approveMutation.variables === profile.id}
               onApprove={() => approveMutation.mutate(profile.id)}
               onReject={() => setRejectTarget(profile)}
+              onView={() => setDetailUserId(profile.userId)}
             />
           ))}
         </div>
@@ -187,6 +190,10 @@ export function Approvals() {
           onSubmit={(reason) => rejectMutation.mutate({ id: rejectTarget.id, reason })}
         />
       )}
+
+      {detailUserId && (
+        <UserDetailModal userId={detailUserId} onClose={() => setDetailUserId(null)} />
+      )}
     </div>
   );
 }
@@ -196,11 +203,13 @@ function ApprovalCard({
   isApproving,
   onApprove,
   onReject,
+  onView,
 }: {
   profile: Profile;
   isApproving: boolean;
   onApprove: () => void;
   onReject: () => void;
+  onView: () => void;
 }) {
   const primaryPhoto =
     profile.photos.find((p) => p.isPrimary) ?? profile.photos[0] ?? null;
@@ -243,6 +252,13 @@ function ApprovalCard({
       </div>
 
       <div className="flex shrink-0 gap-2 sm:flex-col">
+        <button
+          type="button"
+          onClick={onView}
+          className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted hover:bg-surface-raised hover:text-text sm:flex-none"
+        >
+          View
+        </button>
         <button
           type="button"
           onClick={onApprove}
