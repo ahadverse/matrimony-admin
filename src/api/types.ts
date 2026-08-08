@@ -128,6 +128,7 @@ export interface AdminSettings {
   statDistrictsCovered: string;
   statAverageRating: string;
   statProfilesReviewedPercent: string;
+  whatsappNumber: string | null;
   updatedAt: string;
 }
 
