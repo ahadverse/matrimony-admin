@@ -54,7 +54,8 @@ export function Settings() {
       statAverageRating !== query.data.statAverageRating ||
       statProfilesReviewedPercent !== query.data.statProfilesReviewedPercent ||
       whatsappNumber !== (query.data.whatsappNumber ?? '') ||
-      bkashMerchantNumber !== query.data.bkashMerchantNumber);
+      bkashMerchantNumber !== query.data.bkashMerchantNumber)
+      whatsappNumber !== (query?.data?.whatsappNumber ?? '');
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
