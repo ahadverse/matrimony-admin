@@ -6,11 +6,15 @@ import type {
   AdminUserRecord,
   AssistantRequest,
   AssistantRequestStatus,
+  ContactMessage,
+  ContactMessageStatus,
   Gender,
   LoginResponse,
   Paginated,
   Profile,
   SortOrder,
+  SupportConversation,
+  SupportMessage,
   UserStatus,
   VerificationStatus,
   VerificationSubmission,
@@ -155,6 +159,27 @@ export function getTransactions(
     .then((r) => r.data);
 }
 
+export function getPendingManualTopups(
+  page: number,
+  pageSize: number,
+): Promise<Paginated<WalletTransaction>> {
+  return apiClient
+    .get<Paginated<WalletTransaction>>('/admin/transactions/pending-bkash', {
+      params: { page, pageSize },
+    })
+    .then((r) => r.data);
+}
+
+export function approveManualTopup(id: string): Promise<void> {
+  return apiClient.post(`/admin/transactions/${id}/approve`).then(() => undefined);
+}
+
+export function rejectManualTopup(id: string, reason: string): Promise<void> {
+  return apiClient
+    .post(`/admin/transactions/${id}/reject`, { reason })
+    .then(() => undefined);
+}
+
 export interface ListAssistantRequestsParams {
   page: number;
   pageSize: number;
@@ -179,6 +204,46 @@ export function updateAssistantRequestStatus(
     .then(() => undefined);
 }
 
+export interface ListContactMessagesParams {
+  page: number;
+  pageSize: number;
+  status?: ContactMessageStatus;
+  search?: string;
+}
+
+export function getContactMessages(
+  params: ListContactMessagesParams,
+): Promise<Paginated<ContactMessage>> {
+  return apiClient
+    .get<Paginated<ContactMessage>>('/admin/contact-messages', { params })
+    .then((r) => r.data);
+}
+
+export function updateContactMessageStatus(
+  id: string,
+  status: ContactMessageStatus,
+): Promise<void> {
+  return apiClient
+    .patch(`/admin/contact-messages/${id}/status`, { status })
+    .then(() => undefined);
+}
+
+export function getSupportConversations(): Promise<SupportConversation[]> {
+  return apiClient.get<SupportConversation[]>('/admin/support/conversations').then((r) => r.data);
+}
+
+export function getSupportMessages(userId: string): Promise<Paginated<SupportMessage>> {
+  return apiClient
+    .get<Paginated<SupportMessage>>(`/admin/support/${userId}/messages`)
+    .then((r) => r.data);
+}
+
+export function sendSupportReply(userId: string, body: string): Promise<SupportMessage> {
+  return apiClient
+    .post<SupportMessage>(`/admin/support/${userId}/messages`, { body })
+    .then((r) => r.data);
+}
+
 export function getSettings(): Promise<AdminSettings> {
   return apiClient.get<AdminSettings>('/admin/settings').then((r) => r.data);
 }
@@ -196,6 +261,7 @@ export function updateSettings(payload: {
   statAverageRating?: string;
   statProfilesReviewedPercent?: string;
   whatsappNumber?: string;
+  bkashMerchantNumber?: string;
 }): Promise<AdminSettings> {
   return apiClient.patch<AdminSettings>('/admin/settings', payload).then((r) => r.data);
 }

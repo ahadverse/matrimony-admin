@@ -145,7 +145,14 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
               </div>
               <p className="mt-1 text-sm text-text-muted">
                 {data.user.phone}
-                {age !== null ? ` · ${age} yrs` : ''} · <span className="capitalize">{data.user.gender}</span>
+                {data.user.email ? ` · ${data.user.email}` : ''}
+                {age !== null ? ` · ${age} yrs` : ''}
+                {data.user.gender ? (
+                  <>
+                    {' · '}
+                    <span className="capitalize">{data.user.gender}</span>
+                  </>
+                ) : null}
               </p>
               <p className="mt-1 text-sm text-text-muted">
                 Wallet: <span className="font-medium text-text">৳{TAKA.format(data.user.walletBalance)}</span>
@@ -187,28 +194,40 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
             <>
               <Section title="Basics">
                 <Grid>
+                  <Field label="Profile ID" value={profile.publicId} />
                   <Field
                     label="District"
                     value={[profile.subDistrict, profile.district].filter(Boolean).join(', ')}
                   />
                   <Field label="Marital status" value={profile.maritalStatus} />
+                  <Field label="Nationality" value={profile.nationality} />
                   <Field label="Profile created by" value={profile.profileCreatedBy} />
+                  <Field label="Relative name" value={profile.relativeName} />
                   <Field label="Height" value={formatHeight(profile.heightCm)} />
+                  <Field label="Weight" value={profile.weightKg ? `${profile.weightKg} kg` : null} />
                   <Field label="Blood group" value={profile.bloodGroup} />
                   <Field label="Complexion" value={profile.complexion} />
                   <Field label="Body type" value={profile.bodyType} />
+                  <Field label="Physical details" value={profile.physicalDetails} />
                 </Grid>
               </Section>
 
               <Section title="Education & career">
                 <Grid>
                   <Field label="Education" value={profile.education} />
+                  <Field label="Education details" value={profile.educationDetails} />
                   <Field label="College/university" value={profile.collegeUniversity} />
                   <Field label="Profession" value={profile.profession} />
+                  <Field label="Profession details" value={profile.professionDetails} />
+                  <Field label="Working sector" value={profile.workingSector} />
                   <Field label="Company" value={profile.companyName} />
                   <Field
                     label="Monthly income"
-                    value={profile.monthlyIncome ? `৳${TAKA.format(profile.monthlyIncome)}` : null}
+                    value={
+                      profile.monthlyIncome
+                        ? `৳${TAKA.format(profile.monthlyIncome)}${profile.incomeIsPrivate ? ' (private)' : ''}`
+                        : null
+                    }
                   />
                 </Grid>
               </Section>
@@ -216,11 +235,17 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
               <Section title="Family & background">
                 <Grid>
                   <Field label="Religion" value={profile.religion} />
+                  <Field label="Religious value" value={profile.religiousValue} />
+                  <Field label="Family values" value={profile.familyValues} />
+                  <Field label="Diet" value={profile.diet} />
+                  <Field label="Smoking" value={profile.smoke} />
                   <Field label="Mother tongue" value={profile.motherTongue} />
                   <Field label="English comfort" value={profile.englishComfort} />
                   <Field label="Residency status" value={profile.residencyStatus} />
                   <Field label="Grew up in" value={profile.growUpIn} />
+                  <Field label="Father" value={profile.fatherStatus} />
                   <Field label="Father's occupation" value={profile.fatherOccupation} />
+                  <Field label="Mother" value={profile.motherStatus} />
                   <Field label="Mother's occupation" value={profile.motherOccupation} />
                   <Field
                     label="Siblings"
@@ -230,6 +255,23 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
                         : null
                     }
                   />
+                  <Field
+                    label="Brothers (married / unmarried)"
+                    value={
+                      profile.brothersMarried != null || profile.brothersUnmarried != null
+                        ? `${profile.brothersMarried ?? 0} / ${profile.brothersUnmarried ?? 0}`
+                        : null
+                    }
+                  />
+                  <Field
+                    label="Sisters (married / unmarried)"
+                    value={
+                      profile.sistersMarried != null || profile.sistersUnmarried != null
+                        ? `${profile.sistersMarried ?? 0} / ${profile.sistersUnmarried ?? 0}`
+                        : null
+                    }
+                  />
+                  <Field label="Family details" value={profile.familyDetails} />
                   <Field label="Family financial status" value={profile.familyFinancialStatus} />
                 </Grid>
               </Section>

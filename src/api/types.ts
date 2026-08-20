@@ -5,8 +5,23 @@ export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 export type TransactionType = 'topup' | 'view_unlock' | 'refund' | 'admin_adjust' | 'spotlight';
 export type TransactionStatus = 'pending' | 'success' | 'failed';
 export type PaymentProvider = 'bkash' | 'nagad';
+export type PaymentVerificationMethod = 'automatic' | 'manual';
 export type VerificationStatus = 'pending' | 'approved' | 'rejected';
 export type AssistantRequestStatus = 'pending' | 'contacted' | 'closed';
+
+export type ContactMessageStatus = 'new' | 'read' | 'replied';
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string;
+  subject: string;
+  message: string;
+  status: ContactMessageStatus;
+  createdAt: string;
+}
+
 export type SortOrder = 'ASC' | 'DESC';
 
 export interface AssistantRequest {
@@ -22,7 +37,7 @@ export interface AssistantRequest {
 export interface AuthUser {
   id: string;
   phone: string;
-  gender: Gender;
+  gender: Gender | null;
   role: UserRole;
   status: UserStatus;
   walletBalance: number;
@@ -44,7 +59,7 @@ export interface Photo {
 export interface ProfileOwner {
   id: string;
   phone: string;
-  gender: Gender;
+  gender: Gender | null;
   dob: string;
   role?: UserRole;
   status?: UserStatus;
@@ -55,7 +70,11 @@ export interface ProfileOwner {
 export interface Profile {
   id: string;
   userId: string;
+  /** Shown to other members wherever the real name is withheld. */
+  publicId: string | null;
   name: string;
+  relativeName: string | null;
+  nationality: string | null;
   district: string | null;
   subDistrict: string | null;
   bio: string | null;
@@ -89,6 +108,23 @@ export interface Profile {
   bodyType: string | null;
   numberOfSisters: number | null;
   numberOfBrothers: number | null;
+  educationDetails: string | null;
+  workingSector: string | null;
+  professionDetails: string | null;
+  incomeIsPrivate: boolean;
+  fatherStatus: string | null;
+  motherStatus: string | null;
+  brothersMarried: number | null;
+  brothersUnmarried: number | null;
+  sistersMarried: number | null;
+  sistersUnmarried: number | null;
+  familyDetails: string | null;
+  weightKg: number | null;
+  physicalDetails: string | null;
+  religiousValue: string | null;
+  familyValues: string | null;
+  diet: string | null;
+  smoke: string | null;
   photos: Photo[];
   user: ProfileOwner;
   createdAt: string;
@@ -97,7 +133,7 @@ export interface Profile {
 export interface AdminUserRecord {
   id: string;
   phone: string;
-  gender: Gender;
+  gender: Gender | null;
   dob: string;
   role: UserRole;
   status: UserStatus;
@@ -114,9 +150,31 @@ export interface WalletTransaction {
   amount: number;
   balanceAfter: number;
   provider: PaymentProvider | null;
+  providerTransactionId: string | null;
+  payerAccountNumber: string | null;
+  verificationMethod: PaymentVerificationMethod;
   status: TransactionStatus;
   createdAt: string;
   user?: { id: string; phone: string; name: string | null } | null;
+}
+
+export type SupportSenderRole = 'user' | 'admin';
+
+export interface SupportMessage {
+  id: string;
+  userId: string;
+  senderId: string;
+  senderRole: SupportSenderRole;
+  body: string;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface SupportConversation {
+  userId: string;
+  user: { id: string; phone: string; name: string | null };
+  lastMessage: { body: string; senderRole: SupportSenderRole; createdAt: string } | null;
+  unreadCount: number;
 }
 
 export interface AdminSettings {
@@ -129,6 +187,7 @@ export interface AdminSettings {
   statAverageRating: string;
   statProfilesReviewedPercent: string;
   whatsappNumber: string | null;
+  bkashMerchantNumber: string;
   updatedAt: string;
 }
 
@@ -168,7 +227,8 @@ export interface IdentityVerificationRecord {
 export interface AdminUserDetailUser {
   id: string;
   phone: string;
-  gender: Gender;
+  email: string | null;
+  gender: Gender | null;
   dob: string | null;
   role: UserRole;
   status: UserStatus;

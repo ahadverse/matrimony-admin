@@ -7,7 +7,10 @@ import { Dashboard } from './pages/Dashboard';
 import { Approvals } from './pages/Approvals';
 import { Verification } from './pages/Verification';
 import { Users } from './pages/Users';
+import { PendingTopups } from './pages/PendingTopups';
+import { SupportChat } from './pages/SupportChat';
 import { AssistantRequests } from './pages/AssistantRequests';
+import { ContactMessages } from './pages/ContactMessages';
 import { Transactions } from './pages/Transactions';
 import { SendSms } from './pages/SendSms';
 import { Settings } from './pages/Settings';
@@ -59,11 +62,41 @@ function App() {
           }
         />
         <Route
+          path="/pending-topups"
+          element={
+            <ProtectedRoute>
+              <AppShell>
+                <PendingTopups />
+              </AppShell>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/support-chat"
+          element={
+            <ProtectedRoute>
+              <AppShell>
+                <SupportChat />
+              </AppShell>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/assistant-requests"
           element={
             <ProtectedRoute>
               <AppShell>
                 <AssistantRequests />
+              </AppShell>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/contact-messages"
+          element={
+            <ProtectedRoute>
+              <AppShell>
+                <ContactMessages />
               </AppShell>
             </ProtectedRoute>
           }

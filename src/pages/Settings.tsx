@@ -19,6 +19,7 @@ export function Settings() {
   const [statAverageRating, setStatAverageRating] = useState('');
   const [statProfilesReviewedPercent, setStatProfilesReviewedPercent] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [bkashMerchantNumber, setBkashMerchantNumber] = useState('');
 
   useEffect(() => {
     if (query.data) {
@@ -30,6 +31,7 @@ export function Settings() {
       setStatAverageRating(query.data.statAverageRating);
       setStatProfilesReviewedPercent(query.data.statProfilesReviewedPercent);
       setWhatsappNumber(query.data.whatsappNumber ?? '');
+      setBkashMerchantNumber(query.data.bkashMerchantNumber);
     }
   }, [query.data]);
 
@@ -51,7 +53,8 @@ export function Settings() {
       statDistrictsCovered !== query.data.statDistrictsCovered ||
       statAverageRating !== query.data.statAverageRating ||
       statProfilesReviewedPercent !== query.data.statProfilesReviewedPercent ||
-      whatsappNumber !== (query.data.whatsappNumber ?? ''));
+      whatsappNumber !== (query.data.whatsappNumber ?? '') ||
+      bkashMerchantNumber !== query.data.bkashMerchantNumber);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -71,6 +74,11 @@ export function Settings() {
       toast.error('WhatsApp number must be digits only, optionally prefixed with +, e.g. +8801XXXXXXXXX');
       return;
     }
+    const trimmedBkashMerchant = bkashMerchantNumber.trim();
+    if (trimmedBkashMerchant && !/^(?:\+?880|0)1[3-9]\d{8}$/.test(trimmedBkashMerchant)) {
+      toast.error('bKash merchant number must be a valid Bangladeshi mobile number, e.g. 01304082381');
+      return;
+    }
 
     mutation.mutate({
       profileViewCost: cost,
@@ -81,6 +89,7 @@ export function Settings() {
       statAverageRating,
       statProfilesReviewedPercent,
       ...(trimmedWhatsapp ? { whatsappNumber: trimmedWhatsapp } : {}),
+      ...(trimmedBkashMerchant ? { bkashMerchantNumber: trimmedBkashMerchant } : {}),
     });
   }
 
@@ -94,6 +103,7 @@ export function Settings() {
     setStatAverageRating(query.data.statAverageRating);
     setStatProfilesReviewedPercent(query.data.statProfilesReviewedPercent);
     setWhatsappNumber(query.data.whatsappNumber ?? '');
+    setBkashMerchantNumber(query.data.bkashMerchantNumber);
   }
 
   return (
@@ -177,6 +187,26 @@ export function Settings() {
             />
             <p className="mt-1.5 text-xs text-text-faint">
               Number the public site's WhatsApp float button links to, in international format.
+            </p>
+          </div>
+
+          <div className="border-t border-border pt-5">
+            <label
+              htmlFor="bkashMerchantNumber"
+              className="mb-1.5 block text-sm font-medium text-text-muted"
+            >
+              bKash number (manual top-ups)
+            </label>
+            <input
+              id="bkashMerchantNumber"
+              type="tel"
+              placeholder="01304082381"
+              value={bkashMerchantNumber}
+              onChange={(e) => setBkashMerchantNumber(e.target.value)}
+              className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2.5 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <p className="mt-1.5 text-xs text-text-faint">
+              Shown to users on the top-up page as the number to Send Money to for manual bKash verification.
             </p>
           </div>
 

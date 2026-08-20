@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { TOKEN_STORAGE_KEY, USER_STORAGE_KEY, setSessionExpiredHandler } from '../api/client';
 import * as adminApi from '../api/admin';
 import type { AuthUser } from '../api/types';
+import { disconnectAdminNotificationsSocket } from '../lib/socket';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -32,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     localStorage.removeItem(USER_STORAGE_KEY);
     setUser(null);
+    disconnectAdminNotificationsSocket();
   }, []);
 
   // Any 401/403 anywhere in the app clears auth state through this same path.

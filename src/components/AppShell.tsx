@@ -1,11 +1,18 @@
 import type { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { useAuth } from '../auth/AuthContext';
+import { useAdminTopupAlerts } from '../hooks/useAdminTopupAlerts';
+import { useSupportChatAlerts } from '../hooks/useSupportChatAlerts';
+import { getPendingManualTopups, getSupportConversations } from '../api/admin';
 import {
   ApprovalsIcon,
   AssistantIcon,
+  BellIcon,
+  ChatIcon,
   DashboardIcon,
+  InboxIcon,
   LogoutIcon,
   SettingsIcon,
   SmsIcon,
@@ -19,7 +26,10 @@ const NAV_ITEMS = [
   { to: '/approvals', label: 'Approvals', icon: ApprovalsIcon },
   { to: '/verification', label: 'Verification', icon: VerificationIcon },
   { to: '/users', label: 'Users', icon: UsersIcon },
+  { to: '/pending-topups', label: 'Pending bKash', icon: BellIcon },
+  { to: '/support-chat', label: 'Support Chat', icon: ChatIcon },
   { to: '/assistant-requests', label: 'Assistant Requests', icon: AssistantIcon },
+  { to: '/contact-messages', label: 'Contact Messages', icon: InboxIcon },
   { to: '/transactions', label: 'Transactions', icon: TransactionsIcon },
   { to: '/sms', label: 'Send SMS', icon: SmsIcon },
   { to: '/settings', label: 'Settings', icon: SettingsIcon },
@@ -28,6 +38,23 @@ const NAV_ITEMS = [
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  useAdminTopupAlerts();
+  useSupportChatAlerts();
+
+  const pendingTopupsQuery = useQuery({
+    queryKey: ['admin', 'transactions', 'pending-bkash', 'count'],
+    queryFn: () => getPendingManualTopups(1, 1),
+  });
+  const pendingTopupsCount = pendingTopupsQuery.data?.total ?? 0;
+
+  const supportConversationsQuery = useQuery({
+    queryKey: ['admin', 'support', 'conversations'],
+    queryFn: getSupportConversations,
+  });
+  const unreadSupportCount = (supportConversationsQuery.data ?? []).reduce(
+    (sum, c) => sum + c.unreadCount,
+    0,
+  );
 
   function handleLogout() {
     logout();
@@ -62,7 +89,17 @@ export function AppShell({ children }: { children: ReactNode }) {
               }
             >
               <Icon className="h-[18px] w-[18px] shrink-0" />
-              {label}
+              <span className="flex-1">{label}</span>
+              {to === '/pending-topups' && pendingTopupsCount > 0 && (
+                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-danger px-1.5 text-[11px] font-semibold text-white">
+                  {pendingTopupsCount > 99 ? '99+' : pendingTopupsCount}
+                </span>
+              )}
+              {to === '/support-chat' && unreadSupportCount > 0 && (
+                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-danger px-1.5 text-[11px] font-semibold text-white">
+                  {unreadSupportCount > 99 ? '99+' : unreadSupportCount}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

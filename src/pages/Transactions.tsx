@@ -205,7 +205,7 @@ export function Transactions() {
           query.isFetching && !query.isLoading && 'opacity-60',
         )}
       >
-        <table className="w-full min-w-[860px] text-left text-sm">
+        <table className="w-full min-w-[980px] text-left text-sm">
           <thead>
             <tr className="border-b border-border text-xs uppercase tracking-wide text-text-faint">
               <th className="px-4 py-3 font-medium">User</th>
@@ -219,6 +219,7 @@ export function Transactions() {
               />
               <th className="px-4 py-3 font-medium">Balance after</th>
               <th className="px-4 py-3 font-medium">Provider</th>
+              <th className="px-4 py-3 font-medium">Reference</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <SortableTh
                 label="Date"
@@ -232,13 +233,13 @@ export function Transactions() {
           <tbody>
             {query.isLoading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-text-faint">
+                <td colSpan={8} className="px-4 py-10 text-center text-text-faint">
                   Loading transactions…
                 </td>
               </tr>
             ) : transactions.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-text-faint">
+                <td colSpan={8} className="px-4 py-10 text-center text-text-faint">
                   No transactions match these filters.
                 </td>
               </tr>
@@ -269,6 +270,18 @@ export function Transactions() {
                   <td className="px-4 py-3 text-text-muted">৳{TAKA.format(tx.balanceAfter)}</td>
                   <td className="px-4 py-3 capitalize text-text-muted">
                     {tx.provider ?? <span className="text-text-faint">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-text-muted">
+                    {tx.providerTransactionId ? (
+                      <>
+                        <div className="font-mono text-xs">{tx.providerTransactionId}</div>
+                        {tx.payerAccountNumber && (
+                          <div className="text-xs text-text-faint">from {tx.payerAccountNumber}</div>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-text-faint">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <Badge tone={STATUS_TONE[tx.status]}>{tx.status}</Badge>
