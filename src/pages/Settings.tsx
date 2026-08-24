@@ -63,7 +63,9 @@ export function Settings() {
       bkashMerchantNumber !== query.data.bkashMerchantNumber ||
       smsTemplateOtpRegister !== query.data.smsTemplateOtpRegister ||
       smsTemplateOtpLogin !== query.data.smsTemplateOtpLogin ||
-      smsTemplateOtpReset !== query.data.smsTemplateOtpReset);
+      smsTemplateOtpReset !== query.data.smsTemplateOtpReset || 
+      bkashMerchantNumber !== query?.data?.bkashMerchantNumber);
+      whatsappNumber !== (query?.data?.whatsappNumber ?? '');
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
