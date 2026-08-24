@@ -12,6 +12,9 @@ import type {
   LoginResponse,
   Paginated,
   Profile,
+  SmsLog,
+  SmsLogStatus,
+  SmsStats,
   SortOrder,
   SupportConversation,
   SupportMessage,
@@ -252,6 +255,24 @@ export function sendSms(payload: { phone: string; message: string }): Promise<{ 
   return apiClient.post<{ success: boolean }>('/admin/sms/send', payload).then((r) => r.data);
 }
 
+export function getSmsStats(): Promise<SmsStats> {
+  return apiClient.get<SmsStats>('/admin/sms/stats').then((r) => r.data);
+}
+
+export interface ListSmsLogsParams {
+  page: number;
+  pageSize: number;
+  status?: SmsLogStatus;
+  purpose?: string;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: SortOrder;
+}
+
+export function getSmsLogs(params: ListSmsLogsParams): Promise<Paginated<SmsLog>> {
+  return apiClient.get<Paginated<SmsLog>>('/admin/sms/logs', { params }).then((r) => r.data);
+}
+
 export function updateSettings(payload: {
   profileViewCost?: number;
   minTopupAmount?: number;
@@ -262,6 +283,9 @@ export function updateSettings(payload: {
   statProfilesReviewedPercent?: string;
   whatsappNumber?: string;
   bkashMerchantNumber?: string;
+  smsTemplateOtpRegister?: string;
+  smsTemplateOtpLogin?: string;
+  smsTemplateOtpReset?: string;
 }): Promise<AdminSettings> {
   return apiClient.patch<AdminSettings>('/admin/settings', payload).then((r) => r.data);
 }

@@ -187,6 +187,15 @@ export function ChatIcon(props: IconProps) {
   );
 }
 
+export function AnalyticsIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 20V10M11 20V4M18 20v-7" />
+      <path d="M4 20h14" />
+    </svg>
+  );
+}
+
 export function SortIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>

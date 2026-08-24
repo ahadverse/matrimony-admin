@@ -5,8 +5,20 @@ import clsx from 'clsx';
 import { useAuth } from '../auth/AuthContext';
 import { useAdminTopupAlerts } from '../hooks/useAdminTopupAlerts';
 import { useSupportChatAlerts } from '../hooks/useSupportChatAlerts';
-import { getPendingManualTopups, getSupportConversations } from '../api/admin';
+import { useProfileApprovalAlerts } from '../hooks/useProfileApprovalAlerts';
+import { useVerificationAlerts } from '../hooks/useVerificationAlerts';
+import { useContactMessageAlerts } from '../hooks/useContactMessageAlerts';
+import { useAssistantRequestAlerts } from '../hooks/useAssistantRequestAlerts';
 import {
+  getAssistantRequests,
+  getContactMessages,
+  getPendingManualTopups,
+  getPendingProfiles,
+  getSupportConversations,
+  getVerificationSubmissions,
+} from '../api/admin';
+import {
+  AnalyticsIcon,
   ApprovalsIcon,
   AssistantIcon,
   BellIcon,
@@ -32,6 +44,7 @@ const NAV_ITEMS = [
   { to: '/contact-messages', label: 'Contact Messages', icon: InboxIcon },
   { to: '/transactions', label: 'Transactions', icon: TransactionsIcon },
   { to: '/sms', label: 'Send SMS', icon: SmsIcon },
+  { to: '/sms-analytics', label: 'SMS Analytics', icon: AnalyticsIcon },
   { to: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
 
@@ -40,12 +53,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   useAdminTopupAlerts();
   useSupportChatAlerts();
+  useProfileApprovalAlerts();
+  useVerificationAlerts();
+  useContactMessageAlerts();
+  useAssistantRequestAlerts();
 
   const pendingTopupsQuery = useQuery({
     queryKey: ['admin', 'transactions', 'pending-bkash', 'count'],
     queryFn: () => getPendingManualTopups(1, 1),
   });
-  const pendingTopupsCount = pendingTopupsQuery.data?.total ?? 0;
 
   const supportConversationsQuery = useQuery({
     queryKey: ['admin', 'support', 'conversations'],
@@ -55,6 +71,35 @@ export function AppShell({ children }: { children: ReactNode }) {
     (sum, c) => sum + c.unreadCount,
     0,
   );
+
+  const pendingApprovalsQuery = useQuery({
+    queryKey: ['admin', 'profiles', 'pending', 'count'],
+    queryFn: () => getPendingProfiles({ page: 1, pageSize: 1 }),
+  });
+
+  const pendingVerificationsQuery = useQuery({
+    queryKey: ['admin', 'verifications', 'count'],
+    queryFn: () => getVerificationSubmissions({ page: 1, pageSize: 1, status: 'pending' }),
+  });
+
+  const newContactMessagesQuery = useQuery({
+    queryKey: ['admin', 'contact-messages', 'count'],
+    queryFn: () => getContactMessages({ page: 1, pageSize: 1, status: 'new' }),
+  });
+
+  const pendingAssistantRequestsQuery = useQuery({
+    queryKey: ['admin', 'assistant-requests', 'count'],
+    queryFn: () => getAssistantRequests({ page: 1, pageSize: 1, status: 'pending' }),
+  });
+
+  const navBadgeCounts: Record<string, number> = {
+    '/pending-topups': pendingTopupsQuery.data?.total ?? 0,
+    '/support-chat': unreadSupportCount,
+    '/approvals': pendingApprovalsQuery.data?.total ?? 0,
+    '/verification': pendingVerificationsQuery.data?.total ?? 0,
+    '/contact-messages': newContactMessagesQuery.data?.total ?? 0,
+    '/assistant-requests': pendingAssistantRequestsQuery.data?.total ?? 0,
+  };
 
   function handleLogout() {
     logout();
@@ -69,39 +114,37 @@ export function AppShell({ children }: { children: ReactNode }) {
             B
           </div>
           <div className="leading-tight">
-            <p className="text-sm font-semibold text-text">Biye Kori</p>
+            <p className="text-sm font-semibold text-text">BiyeKoraLagbe</p>
             <p className="text-xs text-text-faint">Admin Panel</p>
           </div>
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4">
-          {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                clsx(
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium',
-                  isActive
-                    ? 'bg-primary/15 text-primary-light'
-                    : 'text-text-muted hover:bg-surface-raised hover:text-text',
-                )
-              }
-            >
-              <Icon className="h-[18px] w-[18px] shrink-0" />
-              <span className="flex-1">{label}</span>
-              {to === '/pending-topups' && pendingTopupsCount > 0 && (
-                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-danger px-1.5 text-[11px] font-semibold text-white">
-                  {pendingTopupsCount > 99 ? '99+' : pendingTopupsCount}
-                </span>
-              )}
-              {to === '/support-chat' && unreadSupportCount > 0 && (
-                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-danger px-1.5 text-[11px] font-semibold text-white">
-                  {unreadSupportCount > 99 ? '99+' : unreadSupportCount}
-                </span>
-              )}
-            </NavLink>
-          ))}
+          {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
+            const badgeCount = navBadgeCounts[to] ?? 0;
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) =>
+                  clsx(
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium',
+                    isActive
+                      ? 'bg-primary/15 text-primary-light'
+                      : 'text-text-muted hover:bg-surface-raised hover:text-text',
+                  )
+                }
+              >
+                <Icon className="h-[18px] w-[18px] shrink-0" />
+                <span className="flex-1">{label}</span>
+                {badgeCount > 0 && (
+                  <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-danger px-1.5 text-[11px] font-semibold text-white">
+                    {badgeCount > 99 ? '99+' : badgeCount}
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div className="border-t border-border p-3">

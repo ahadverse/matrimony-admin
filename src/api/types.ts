@@ -188,7 +188,31 @@ export interface AdminSettings {
   statProfilesReviewedPercent: string;
   whatsappNumber: string | null;
   bkashMerchantNumber: string;
+  smsTemplateOtpRegister: string;
+  smsTemplateOtpLogin: string;
+  smsTemplateOtpReset: string;
   updatedAt: string;
+}
+
+export type SmsLogStatus = 'success' | 'failed';
+
+export interface SmsLog {
+  id: string;
+  phone: string;
+  message: string;
+  purpose: string;
+  provider: string;
+  status: SmsLogStatus;
+  errorMessage: string | null;
+  createdAt: string;
+}
+
+export interface SmsStats {
+  totalSent: number;
+  successCount: number;
+  failedCount: number;
+  byPurpose: { purpose: string; count: number }[];
+  byDay: { day: string; success: number; failed: number }[];
 }
 
 export interface VerificationSubmissionUser {

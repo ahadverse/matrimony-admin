@@ -13,6 +13,7 @@ import { AssistantRequests } from './pages/AssistantRequests';
 import { ContactMessages } from './pages/ContactMessages';
 import { Transactions } from './pages/Transactions';
 import { SendSms } from './pages/SendSms';
+import { SmsAnalytics } from './pages/SmsAnalytics';
 import { Settings } from './pages/Settings';
 
 function App() {
@@ -117,6 +118,16 @@ function App() {
             <ProtectedRoute>
               <AppShell>
                 <SendSms />
+              </AppShell>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sms-analytics"
+          element={
+            <ProtectedRoute>
+              <AppShell>
+                <SmsAnalytics />
               </AppShell>
             </ProtectedRoute>
           }
