@@ -25,7 +25,9 @@ import type {
 } from './types';
 
 export function login(phone: string, password: string): Promise<LoginResponse> {
-  return apiClient.post<LoginResponse>('/auth/login', { phone, password }).then((r) => r.data);
+  return apiClient
+    .post<LoginResponse>('/auth/login', { identifier: phone, password })
+    .then((r) => r.data);
 }
 
 export function getStats(): Promise<AdminStats> {
