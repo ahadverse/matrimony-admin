@@ -8,6 +8,7 @@ export type PaymentProvider = 'bkash' | 'nagad';
 export type PaymentVerificationMethod = 'automatic' | 'manual';
 export type VerificationStatus = 'pending' | 'approved' | 'rejected';
 export type AssistantRequestStatus = 'pending' | 'contacted' | 'closed';
+export type AssistantRequestPlan = 'three_months' | 'six_months';
 
 export type ContactMessageStatus = 'new' | 'read' | 'replied';
 
@@ -30,6 +31,8 @@ export interface AssistantRequest {
   phone: string;
   email: string;
   profileId: string | null;
+  /** Null when the lead reached the form without picking a plan card. */
+  plan: AssistantRequestPlan | null;
   status: AssistantRequestStatus;
   createdAt: string;
 }

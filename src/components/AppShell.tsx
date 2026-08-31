@@ -114,7 +114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             B
           </div>
           <div className="leading-tight">
-            <p className="text-sm font-semibold text-text">BiyeKoraLagbe</p>
+            <p className="text-sm font-semibold text-text">Biye Kora Lagbe</p>
             <p className="text-xs text-text-faint">Admin Panel</p>
           </div>
         </div>

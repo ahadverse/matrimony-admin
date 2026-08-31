@@ -42,7 +42,7 @@ export function Login() {
           <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-xl font-bold text-white">
             B
           </div>
-          <h1 className="text-xl font-semibold text-text">BiyeKoraLagbe Admin</h1>
+          <h1 className="text-xl font-semibold text-text">Biye Kora Lagbe Admin</h1>
           <p className="mt-1 text-sm text-text-faint">Sign in to manage the platform</p>
         </div>
 

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 import { getAssistantRequests, updateAssistantRequestStatus } from '../api/admin';
-import type { AssistantRequest, AssistantRequestStatus } from '../api/types';
+import type { AssistantRequest, AssistantRequestPlan, AssistantRequestStatus } from '../api/types';
 import { Badge } from '../components/Badge';
 import type { BadgeTone } from '../components/Badge';
 import { Pagination } from '../components/Pagination';
@@ -25,6 +25,11 @@ const STATUS_TONE: Record<AssistantRequestStatus, BadgeTone> = {
   pending: 'gold',
   contacted: 'primary',
   closed: 'neutral',
+};
+
+const PLAN_LABELS: Record<AssistantRequestPlan, string> = {
+  three_months: '3 Months',
+  six_months: '6 Months',
 };
 
 export function AssistantRequests() {
@@ -163,6 +168,11 @@ function RequestCard({
         <div className="flex flex-wrap items-baseline gap-x-2">
           <h3 className="text-base font-semibold text-text">{request.name}</h3>
           <Badge tone={STATUS_TONE[request.status]}>{request.status}</Badge>
+          {/* Always rendered, including the "no plan" case — a blank would read
+              as a missing column rather than a lead who skipped the pricing. */}
+          <Badge tone={request.plan ? 'success' : 'neutral'}>
+            {request.plan ? PLAN_LABELS[request.plan] : 'No plan'}
+          </Badge>
         </div>
         <p className="mt-0.5 text-sm text-text-muted">{request.phone} · {request.email}</p>
         {request.profileId && (
