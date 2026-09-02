@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { sendSms } from '../api/admin';
 
 const MESSAGE_MAX_LENGTH = 918;
 
 export function SendSms() {
-  const [phone, setPhone] = useState('');
+  // `?phone=` lets other pages (e.g. Approvals) hand off a member's number.
+  const [searchParams] = useSearchParams();
+  const [phone, setPhone] = useState(searchParams.get('phone') ?? '');
   const [message, setMessage] = useState('');
 
   const mutation = useMutation({

@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
@@ -8,32 +7,22 @@ import type { AdminUserDetailUser } from '../api/types';
 import { Badge } from './Badge';
 import type { BadgeTone } from './Badge';
 import { Modal } from './Modal';
+import { EmailChannel, PhoneChannel } from './ContactActions';
+import {
+  Field,
+  Grid,
+  ProfileDetails,
+  Section,
+  calculateAge,
+  formatDetailDate,
+  formatMoney,
+  humanize,
+} from './ProfileDetails';
 
 const TAKA = new Intl.NumberFormat('en-BD');
 
 function formatDate(value: string | null | undefined, withTime = false): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    ...(withTime ? { hour: 'numeric', minute: '2-digit' } : {}),
-  });
-}
-
-function calculateAge(dob: string | null | undefined): number | null {
-  if (!dob) return null;
-  const birth = new Date(dob);
-  if (Number.isNaN(birth.getTime())) return null;
-  return Math.floor((Date.now() - birth.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
-}
-
-function formatHeight(cm: number | null | undefined): string | null {
-  if (cm == null) return null;
-  const totalInches = Math.round(cm / 2.54);
-  const feet = Math.floor(totalInches / 12);
-  const inches = totalInches % 12;
-  return `${feet} feet ${inches} inch`;
+  return formatDetailDate(value, withTime) ?? '—';
 }
 
 const APPROVAL_TONE: Record<string, BadgeTone> = {
@@ -67,6 +56,10 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
     ? profile.photos.find((p) => p.isPrimary) ?? profile.photos[0] ?? null
     : null;
   const age = data ? calculateAge(data.user.dob) : null;
+  const contactName = profile?.name?.split(' ')[0] ?? null;
+  const outreachMessage = `Hello${contactName ? ` ${contactName}` : ''}, this is Biye Kora Lagbe support${
+    profile?.publicId ? ` regarding your profile (${profile.publicId})` : ''
+  }.`;
 
   return (
     <Modal
@@ -162,6 +155,56 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
             </div>
           </div>
 
+          <Section title="Contact">
+            <div className="space-y-2.5 rounded-lg border border-border bg-surface-raised/60 p-3">
+              {data.user.phone ? (
+                <PhoneChannel label="Phone" phone={data.user.phone} message={outreachMessage} />
+              ) : (
+                <p className="text-sm text-text-faint">No phone number on file.</p>
+              )}
+              {data.user.email ? (
+                <EmailChannel
+                  label="Email"
+                  email={data.user.email}
+                  subject="Your Biye Kora Lagbe account"
+                  body={`${outreachMessage}\n\n`}
+                />
+              ) : (
+                <p className="text-sm text-text-faint">No email address on file.</p>
+              )}
+              {profile?.relativePhone && (
+                <PhoneChannel
+                  label={`Guardian${profile.relativeName ? ` — ${profile.relativeName}` : ''}${
+                    profile.profileCreatedBy ? ` (${humanize(profile.profileCreatedBy)})` : ''
+                  }`}
+                  phone={profile.relativePhone}
+                  message={`Hello${profile.relativeName ? ` ${profile.relativeName}` : ''}, this is Biye Kora Lagbe support regarding ${profile.name}'s profile.`}
+                />
+              )}
+            </div>
+          </Section>
+
+          <Section title="Account">
+            <Grid>
+              <Field label="User ID" value={data.user.id} />
+              <Field label="Role" value={humanize(data.user.role)} />
+              <Field label="Status" value={humanize(data.user.status)} />
+              <Field label="Gender" value={humanize(data.user.gender)} />
+              <Field
+                label="Date of birth"
+                value={
+                  data.user.dob
+                    ? `${formatDate(data.user.dob)}${age !== null ? ` (${age} yrs)` : ''}`
+                    : null
+                }
+              />
+              <Field label="Wallet balance" value={formatMoney(data.user.walletBalance)} />
+              <Field label="Language" value={data.user.languagePref} />
+              <Field label="Joined" value={formatDate(data.user.createdAt, true)} />
+              <Field label="Last active" value={formatDate(data.user.lastActiveAt, true)} />
+            </Grid>
+          </Section>
+
           {profile?.approvalStatus === 'rejected' && profile.rejectionReason && (
             <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
               Rejection reason: {profile.rejectionReason}
@@ -169,7 +212,7 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
           )}
 
           {profile && profile.photos.length > 0 && (
-            <Section title="Photos">
+            <Section title={`Photos (${profile.photos.length})`}>
               <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
                 {profile.photos.map((photo) => (
                   <a
@@ -191,123 +234,7 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
           )}
 
           {profile ? (
-            <>
-              <Section title="Basics">
-                <Grid>
-                  <Field label="Profile ID" value={profile.publicId} />
-                  <Field
-                    label="District"
-                    value={[profile.subDistrict, profile.district].filter(Boolean).join(', ')}
-                  />
-                  <Field label="Marital status" value={profile.maritalStatus} />
-                  <Field label="Nationality" value={profile.nationality} />
-                  <Field label="Profile created by" value={profile.profileCreatedBy} />
-                  <Field label="Relative name" value={profile.relativeName} />
-                  <Field label="Height" value={formatHeight(profile.heightCm)} />
-                  <Field label="Weight" value={profile.weightKg ? `${profile.weightKg} kg` : null} />
-                  <Field label="Blood group" value={profile.bloodGroup} />
-                  <Field label="Complexion" value={profile.complexion} />
-                  <Field label="Body type" value={profile.bodyType} />
-                  <Field label="Physical details" value={profile.physicalDetails} />
-                </Grid>
-              </Section>
-
-              <Section title="Education & career">
-                <Grid>
-                  <Field label="Education" value={profile.education} />
-                  <Field label="Education details" value={profile.educationDetails} />
-                  <Field label="College/university" value={profile.collegeUniversity} />
-                  <Field label="Profession" value={profile.profession} />
-                  <Field label="Profession details" value={profile.professionDetails} />
-                  <Field label="Working sector" value={profile.workingSector} />
-                  <Field label="Company" value={profile.companyName} />
-                  <Field
-                    label="Monthly income"
-                    value={
-                      profile.monthlyIncome
-                        ? `৳${TAKA.format(profile.monthlyIncome)}${profile.incomeIsPrivate ? ' (private)' : ''}`
-                        : null
-                    }
-                  />
-                </Grid>
-              </Section>
-
-              <Section title="Family & background">
-                <Grid>
-                  <Field label="Religion" value={profile.religion} />
-                  <Field label="Religious value" value={profile.religiousValue} />
-                  <Field label="Family values" value={profile.familyValues} />
-                  <Field label="Diet" value={profile.diet} />
-                  <Field label="Smoking" value={profile.smoke} />
-                  <Field label="Mother tongue" value={profile.motherTongue} />
-                  <Field label="English comfort" value={profile.englishComfort} />
-                  <Field label="Residency status" value={profile.residencyStatus} />
-                  <Field label="Grew up in" value={profile.growUpIn} />
-                  <Field label="Father" value={profile.fatherStatus} />
-                  <Field label="Father's occupation" value={profile.fatherOccupation} />
-                  <Field label="Mother" value={profile.motherStatus} />
-                  <Field label="Mother's occupation" value={profile.motherOccupation} />
-                  <Field
-                    label="Siblings"
-                    value={
-                      profile.numberOfBrothers != null || profile.numberOfSisters != null
-                        ? `${profile.numberOfBrothers ?? 0} brother(s), ${profile.numberOfSisters ?? 0} sister(s)`
-                        : null
-                    }
-                  />
-                  <Field
-                    label="Brothers (married / unmarried)"
-                    value={
-                      profile.brothersMarried != null || profile.brothersUnmarried != null
-                        ? `${profile.brothersMarried ?? 0} / ${profile.brothersUnmarried ?? 0}`
-                        : null
-                    }
-                  />
-                  <Field
-                    label="Sisters (married / unmarried)"
-                    value={
-                      profile.sistersMarried != null || profile.sistersUnmarried != null
-                        ? `${profile.sistersMarried ?? 0} / ${profile.sistersUnmarried ?? 0}`
-                        : null
-                    }
-                  />
-                  <Field label="Family details" value={profile.familyDetails} />
-                  <Field label="Family financial status" value={profile.familyFinancialStatus} />
-                </Grid>
-              </Section>
-
-              <Section title="Addresses">
-                <Grid>
-                  <Field label="Present address" value={profile.presentAddress} />
-                  <Field label="Permanent address" value={profile.permanentAddress} />
-                </Grid>
-              </Section>
-
-              {(profile.bio || profile.partnerPreferences || profile.hobbies) && (
-                <Section title="About">
-                  <div className="space-y-2 text-sm">
-                    {profile.bio && (
-                      <p>
-                        <span className="text-text-faint">Bio: </span>
-                        <span className="text-text">{profile.bio}</span>
-                      </p>
-                    )}
-                    {profile.partnerPreferences && (
-                      <p>
-                        <span className="text-text-faint">Partner preferences: </span>
-                        <span className="text-text">{profile.partnerPreferences}</span>
-                      </p>
-                    )}
-                    {profile.hobbies && (
-                      <p>
-                        <span className="text-text-faint">Hobbies: </span>
-                        <span className="text-text">{profile.hobbies}</span>
-                      </p>
-                    )}
-                  </div>
-                </Section>
-              )}
-            </>
+            <ProfileDetails profile={profile} />
           ) : (
             <p className="text-sm text-text-faint">This user hasn't created a profile yet.</p>
           )}
@@ -372,38 +299,5 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
         </div>
       )}
     </Modal>
-  );
-}
-
-function Section({
-  title,
-  action,
-  children,
-}: {
-  title: string;
-  action?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <section className="border-t border-border pt-4 first:border-0 first:pt-0">
-      <div className="mb-2 flex items-center justify-between">
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-text-faint">{title}</h4>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function Grid({ children }: { children: ReactNode }) {
-  return <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">{children}</dl>;
-}
-
-function Field({ label, value }: { label: string; value: string | null | undefined }) {
-  return (
-    <div>
-      <dt className="text-xs text-text-faint">{label}</dt>
-      <dd className="text-sm text-text">{value || '—'}</dd>
-    </div>
   );
 }

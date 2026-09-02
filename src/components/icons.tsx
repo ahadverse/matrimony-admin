@@ -196,6 +196,41 @@ export function AnalyticsIcon(props: IconProps) {
   );
 }
 
+export function PhoneIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M6.5 3.5h3l1.5 4-2 1.5a12 12 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4.5 5.7 2 2 0 0 1 6.5 3.5Z" />
+    </svg>
+  );
+}
+
+export function MailIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3.5 7 8.5 6 8.5-6" />
+    </svg>
+  );
+}
+
+export function WhatsappIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M3.5 20.5 5 16.6A8 8 0 1 1 8 19.3l-4.5 1.2Z" />
+      <path d="M9 8.6c.3 1 .8 1.9 1.5 2.6.7.7 1.6 1.2 2.6 1.5l.8-1.1 2.1.9v1.6c-1.7.4-3.6-.4-5.2-2-1.6-1.6-2.4-3.5-2-5.2h1.6l.9 2.1L9 8.6Z" />
+    </svg>
+  );
+}
+
+export function CopyIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M15 5.5A1.5 1.5 0 0 0 13.5 4h-8A1.5 1.5 0 0 0 4 5.5v8A1.5 1.5 0 0 0 5.5 15" />
+    </svg>
+  );
+}
+
 export function SortIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>
