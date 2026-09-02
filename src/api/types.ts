@@ -59,13 +59,22 @@ export interface Photo {
   order: number;
 }
 
+export type AuthProvider = 'local' | 'google' | 'facebook';
+
 export interface ProfileOwner {
   id: string;
-  phone: string;
+  /** Null until the registration wizard's last step, where the phone is collected and verified. */
+  phone: string | null;
+  email: string | null;
   gender: Gender | null;
-  dob: string;
+  dob: string | null;
   role?: UserRole;
   status?: UserStatus;
+  authProvider?: AuthProvider;
+  phoneVerifiedAt?: string | null;
+  emailVerifiedAt?: string | null;
+  lastActiveAt?: string | null;
+  languagePref?: string;
   walletBalance?: number;
   createdAt?: string;
 }
@@ -77,7 +86,14 @@ export interface Profile {
   publicId: string | null;
   name: string;
   relativeName: string | null;
+  /** Guardian's contact number — a second way to reach the member. */
+  relativePhone: string | null;
   nationality: string | null;
+  country: string | null;
+  countryCode: string | null;
+  state: string | null;
+  city: string | null;
+  zip: string | null;
   district: string | null;
   subDistrict: string | null;
   bio: string | null;
@@ -128,9 +144,11 @@ export interface Profile {
   familyValues: string | null;
   diet: string | null;
   smoke: string | null;
+  spotlightUntil: string | null;
   photos: Photo[];
   user: ProfileOwner;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface AdminUserRecord {
