@@ -40,13 +40,13 @@ export function SendSms() {
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-text">Send SMS</h1>
+        <h1 className="text-xl font-semibold text-text sm:text-2xl">Send SMS</h1>
         <p className="mt-1 text-sm text-text-faint">Manually send a text message to any phone number</p>
       </header>
 
       <form
         onSubmit={handleSubmit}
-        className="max-w-lg space-y-5 rounded-xl border border-border bg-surface p-6"
+        className="max-w-lg space-y-5 rounded-xl border border-border bg-surface p-4 sm:p-6"
       >
         <div>
           <label htmlFor="phone" className="mb-1.5 block text-sm font-medium text-text-muted">
@@ -79,11 +79,11 @@ export function SendSms() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 border-t border-border pt-4">
+        <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center">
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:enabled:bg-primary-light disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:enabled:bg-primary-light disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:py-2"
           >
             {mutation.isPending ? 'Sending…' : 'Send SMS'}
           </button>

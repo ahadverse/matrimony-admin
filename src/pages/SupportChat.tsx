@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import clsx from 'clsx';
 import { getSupportConversations, getSupportMessages, sendSupportReply } from '../api/admin';
 import type { SupportConversation } from '../api/types';
-import { SpinnerIcon } from '../components/icons';
+import { ChevronLeftIcon, SpinnerIcon } from '../components/icons';
 
 export function SupportChat() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -16,9 +16,13 @@ export function SupportChat() {
     refetchInterval: 15_000,
   });
   const conversations = conversationsQuery.data ?? [];
+  const didAutoSelectRef = useRef(false);
 
+  // Only auto-select once: on mobile the back button clears the selection to reveal the list,
+  // and re-selecting would immediately bounce the user back into the thread.
   useEffect(() => {
-    if (selectedUserId || conversations.length === 0) return;
+    if (didAutoSelectRef.current || selectedUserId || conversations.length === 0) return;
+    didAutoSelectRef.current = true;
     setSelectedUserId(conversations[0].userId);
   }, [conversations, selectedUserId]);
 
@@ -27,14 +31,19 @@ export function SupportChat() {
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-text">Support Chat</h1>
+        <h1 className="text-xl font-semibold text-text sm:text-2xl">Support Chat</h1>
         <p className="mt-1 text-sm text-text-faint">
           Conversations started from the "Contact Support" button on international top-ups.
         </p>
       </header>
 
-      <div className="flex h-[70vh] overflow-hidden rounded-xl border border-border bg-surface">
-        <div className="w-72 shrink-0 overflow-y-auto border-r border-border">
+      <div className="flex h-[calc(100svh-11rem)] overflow-hidden rounded-xl border border-border bg-surface lg:h-[70vh]">
+        <div
+          className={clsx(
+            'w-full shrink-0 overflow-y-auto border-border lg:block lg:w-72 lg:border-r',
+            selectedUserId ? 'hidden' : 'block',
+          )}
+        >
           {conversationsQuery.isLoading ? (
             <p className="p-4 text-sm text-text-faint">Loading…</p>
           ) : conversations.length === 0 ? (
@@ -51,12 +60,18 @@ export function SupportChat() {
           )}
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div
+          className={clsx(
+            'min-w-0 flex-1 flex-col lg:flex',
+            selectedUserId ? 'flex' : 'hidden',
+          )}
+        >
           {selected ? (
             <Thread
               key={selected.userId}
               userId={selected.userId}
               userLabel={selected.user.name ?? selected.user.phone}
+              onBack={() => setSelectedUserId(null)}
               onReplySent={() => queryClient.invalidateQueries({ queryKey: ['admin', 'support'] })}
             />
           ) : (
@@ -84,7 +99,7 @@ function ConversationRow({
       type="button"
       onClick={onClick}
       className={clsx(
-        'flex w-full flex-col gap-0.5 border-b border-border px-4 py-3 text-left transition-colors',
+        'flex min-h-[56px] w-full flex-col justify-center gap-0.5 border-b border-border px-4 py-3 text-left transition-colors',
         isActive ? 'bg-primary/10' : 'hover:bg-surface-raised',
       )}
     >
@@ -108,10 +123,12 @@ function ConversationRow({
 function Thread({
   userId,
   userLabel,
+  onBack,
   onReplySent,
 }: {
   userId: string;
   userLabel: string;
+  onBack: () => void;
   onReplySent: () => void;
 }) {
   const [reply, setReply] = useState('');
@@ -147,8 +164,16 @@ function Thread({
 
   return (
     <>
-      <div className="shrink-0 border-b border-border px-4 py-3">
-        <p className="text-sm font-semibold text-text">{userLabel}</p>
+      <div className="flex shrink-0 items-center gap-1 border-b border-border px-3 py-3 sm:px-4">
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Back to conversations"
+          className="-ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-text-muted hover:bg-surface-raised hover:text-text lg:hidden"
+        >
+          <ChevronLeftIcon className="h-5 w-5" />
+        </button>
+        <p className="truncate text-sm font-semibold text-text">{userLabel}</p>
       </div>
 
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
@@ -162,7 +187,7 @@ function Thread({
               <div key={m.id} className={clsx('flex', m.senderRole === 'admin' ? 'justify-end' : 'justify-start')}>
                 <div
                   className={clsx(
-                    'max-w-[70%] rounded-2xl px-3.5 py-2 text-sm',
+                    'max-w-[85%] rounded-2xl px-3.5 py-2 text-sm sm:max-w-[70%]',
                     m.senderRole === 'admin'
                       ? 'bg-primary text-white'
                       : 'bg-surface-raised text-text',
@@ -184,7 +209,7 @@ function Thread({
         )}
       </div>
 
-      <div className="flex shrink-0 items-end gap-2 border-t border-border px-4 py-3">
+      <div className="flex shrink-0 items-end gap-2 border-t border-border px-3 py-3 sm:px-4">
         <textarea
           rows={1}
           value={reply}
@@ -202,7 +227,7 @@ function Thread({
           type="button"
           onClick={handleSend}
           disabled={!reply.trim() || sendMutation.isPending}
-          className="flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 sm:h-9"
         >
           {sendMutation.isPending && <SpinnerIcon className="h-3.5 w-3.5 animate-spin" />}
           Send

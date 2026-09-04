@@ -50,7 +50,7 @@ export function Dashboard() {
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-text">Dashboard</h1>
+        <h1 className="text-xl font-semibold text-text sm:text-2xl">Dashboard</h1>
         <p className="mt-1 text-sm text-text-faint">Platform overview at a glance</p>
       </header>
 
@@ -83,21 +83,24 @@ export function Dashboard() {
         />
       </div>
 
-      <section className="mt-8 rounded-xl border border-border bg-surface p-5">
+      <section className="mt-6 min-w-0 rounded-xl border border-border bg-surface p-4 sm:mt-8 sm:p-5">
         <h2 className="text-sm font-semibold text-text">Revenue by day</h2>
         <p className="mt-0.5 text-xs text-text-faint">
           Successful wallet top-ups from recent transactions
         </p>
 
-        <div className="mt-4">
+        {/* Height lives on the wrapper, not the chart: ResponsiveContainer only
+            fills a parent that already has one, and 280px of bars leaves a phone
+            with almost nothing above the fold. */}
+        <div className="mt-4 h-[220px] sm:h-[280px]">
           {transactionsQuery.isLoading ? (
-            <p className="py-10 text-center text-sm text-text-faint">Loading…</p>
+            <p className="flex h-full items-center justify-center text-sm text-text-faint">Loading…</p>
           ) : revenueByDay.length === 0 ? (
-            <p className="py-10 text-center text-sm text-text-faint">
+            <p className="flex h-full items-center justify-center text-center text-sm text-text-faint">
               Not enough transaction data yet to chart revenue.
             </p>
           ) : (
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer width="100%" height="100%">
               <BarChart data={revenueByDay} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2c2032" vertical={false} />
                 <XAxis

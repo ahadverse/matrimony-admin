@@ -102,11 +102,11 @@ export function Users() {
     <div>
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-text">Users</h1>
+          <h1 className="text-xl font-semibold text-text sm:text-2xl">Users</h1>
           <p className="mt-1 text-sm text-text-faint">Manage user accounts and access</p>
         </div>
 
-        <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
+        <div className="flex w-full gap-1 rounded-lg border border-border bg-surface p-1 sm:w-auto">
           {STATUS_FILTERS.map((f) => (
             <button
               key={f.value}
@@ -116,7 +116,7 @@ export function Users() {
                 setPage(1);
               }}
               className={clsx(
-                'rounded-md px-3 py-1.5 text-sm font-medium',
+                'flex-1 rounded-md px-3 py-2.5 text-sm font-medium sm:flex-none sm:py-1.5',
                 statusFilter === f.value
                   ? 'bg-primary text-white'
                   : 'text-text-muted hover:text-text',
@@ -140,7 +140,7 @@ export function Users() {
             setGenderFilter(e.target.value as GenderFilter);
             setPage(1);
           }}
-          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:w-auto sm:py-2"
         >
           <option value="all">All genders</option>
           <option value="male">Male</option>
@@ -152,7 +152,7 @@ export function Users() {
             setVerifiedFilter(e.target.value as VerifiedFilter);
             setPage(1);
           }}
-          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:w-auto sm:py-2"
         >
           <option value="all">Verified & unverified</option>
           <option value="true">Verified only</option>
@@ -247,7 +247,7 @@ export function Users() {
                     })}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2 whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => setDetailUserId(user.id)}
@@ -362,7 +362,7 @@ function WalletAdjustModal({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted hover:bg-surface hover:text-text"
+            className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-text-muted hover:bg-surface hover:text-text sm:py-2"
           >
             Cancel
           </button>
@@ -370,7 +370,7 @@ function WalletAdjustModal({
             type="button"
             disabled={!isValid || isSubmitting}
             onClick={() => onSubmit(parsedAmount, reason.trim() || undefined)}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:enabled:bg-primary-light disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:enabled:bg-primary-light disabled:cursor-not-allowed disabled:opacity-60 sm:py-2"
           >
             {isSubmitting ? 'Saving…' : 'Save'}
           </button>

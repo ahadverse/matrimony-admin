@@ -23,7 +23,9 @@ export function SortableTh({
   const isActive = activeSortBy === sortKey;
 
   return (
-    <th className={clsx('px-4 py-3 font-medium', align === 'right' && 'text-right')}>
+    <th
+      className={clsx('whitespace-nowrap px-4 py-3 font-medium', align === 'right' && 'text-right')}
+    >
       <button
         type="button"
         onClick={() => onSort(sortKey)}

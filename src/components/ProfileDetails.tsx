@@ -72,7 +72,11 @@ export function Section({
 }
 
 export function Grid({ children }: { children: ReactNode }) {
-  return <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">{children}</dl>;
+  return (
+    <dl className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 sm:gap-y-2 lg:grid-cols-3">
+      {children}
+    </dl>
+  );
 }
 
 export function Field({
@@ -84,8 +88,10 @@ export function Field({
   value: string | number | null | undefined;
   wide?: boolean;
 }) {
+  // Spans must track Grid's column counts at each breakpoint — a span wider than
+  // the track count spills into an implicit column.
   return (
-    <div className={wide ? 'col-span-2 sm:col-span-3' : undefined}>
+    <div className={wide ? 'col-span-1 sm:col-span-2 lg:col-span-3' : undefined}>
       <dt className="text-xs text-text-faint">{label}</dt>
       <dd className="whitespace-pre-wrap break-words text-sm text-text">
         {value === null || value === undefined || value === '' ? '—' : value}

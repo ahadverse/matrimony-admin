@@ -73,20 +73,20 @@ export function ContactMessages() {
     <div>
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-text">Contact Messages</h1>
+          <h1 className="text-xl font-semibold text-text sm:text-2xl">Contact Messages</h1>
           <p className="mt-1 text-sm text-text-faint">
             Enquiries submitted through the Contact Us page
           </p>
         </div>
 
-        <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
+        <div className="flex w-full gap-1 rounded-lg border border-border bg-surface p-1 sm:w-auto">
           {FILTERS.map((f) => (
             <button
               key={f.value}
               type="button"
               onClick={() => handleFilterChange(f.value)}
               className={clsx(
-                'rounded-md px-3 py-1.5 text-sm font-medium',
+                'flex-1 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium sm:flex-none sm:py-1.5',
                 filter === f.value ? 'bg-primary text-white' : 'text-text-muted hover:text-text',
               )}
             >
@@ -161,14 +161,14 @@ function MessageCard({
     <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 sm:flex-row">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2">
-          <h3 className="text-base font-semibold text-text">{message.subject}</h3>
+          <h3 className="min-w-0 break-words text-base font-semibold text-text">{message.subject}</h3>
           <Badge tone={STATUS_TONE[message.status]}>{message.status}</Badge>
         </div>
-        <p className="mt-0.5 text-sm text-text-muted">
+        <p className="mt-0.5 break-words text-sm text-text-muted">
           {message.name}
           {message.phone ? ` · ${message.phone}` : ''} · {message.email}
         </p>
-        <p className="mt-2 whitespace-pre-line text-sm text-text">{message.message}</p>
+        <p className="mt-2 whitespace-pre-line break-words text-sm text-text">{message.message}</p>
         <p className="mt-2 text-xs text-text-faint">
           Received{' '}
           {new Date(message.createdAt).toLocaleString('en-US', {
@@ -181,10 +181,10 @@ function MessageCard({
         </p>
       </div>
 
-      <div className="flex shrink-0 flex-col gap-2">
+      <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col">
         <a
           href={`mailto:${message.email}?subject=${encodeURIComponent(`Re: ${message.subject}`)}`}
-          className="rounded-lg border border-border px-4 py-2 text-center text-sm font-medium text-text-muted hover:bg-surface-raised hover:text-text"
+          className="flex-1 whitespace-nowrap rounded-lg border border-border px-4 py-2.5 text-center text-sm font-medium text-text-muted hover:bg-surface-raised hover:text-text sm:flex-none sm:py-2"
         >
           Reply by email
         </a>
@@ -193,7 +193,7 @@ function MessageCard({
             type="button"
             onClick={() => onSetStatus('read')}
             disabled={isUpdating}
-            className="rounded-lg bg-primary/15 px-4 py-2 text-sm font-semibold text-primary hover:enabled:bg-primary/25 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex-1 whitespace-nowrap rounded-lg bg-primary/15 px-4 py-2.5 text-sm font-semibold text-primary hover:enabled:bg-primary/25 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:py-2"
           >
             {isUpdating ? 'Updating…' : 'Mark read'}
           </button>
@@ -203,7 +203,7 @@ function MessageCard({
             type="button"
             onClick={() => onSetStatus('replied')}
             disabled={isUpdating}
-            className="rounded-lg bg-success/15 px-4 py-2 text-sm font-semibold text-success hover:enabled:bg-success/25 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex-1 whitespace-nowrap rounded-lg bg-success/15 px-4 py-2.5 text-sm font-semibold text-success hover:enabled:bg-success/25 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:py-2"
           >
             {isUpdating ? 'Updating…' : 'Mark replied'}
           </button>
@@ -213,7 +213,7 @@ function MessageCard({
             type="button"
             onClick={() => onSetStatus('new')}
             disabled={isUpdating}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted hover:enabled:bg-surface-raised hover:enabled:text-text disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex-1 whitespace-nowrap rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-text-muted hover:enabled:bg-surface-raised hover:enabled:text-text disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:py-2"
           >
             {isUpdating ? 'Updating…' : 'Reopen'}
           </button>

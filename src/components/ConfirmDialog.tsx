@@ -29,7 +29,7 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted hover:bg-surface hover:text-text"
+            className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-text-muted hover:bg-surface hover:text-text sm:py-2"
           >
             Cancel
           </button>
@@ -38,7 +38,7 @@ export function ConfirmDialog({
             onClick={onConfirm}
             disabled={isLoading}
             className={clsx(
-              'rounded-lg px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
+              'rounded-lg px-4 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60 sm:py-2',
               tone === 'danger'
                 ? 'bg-danger hover:enabled:bg-danger/90'
                 : 'bg-primary hover:enabled:bg-primary-light',

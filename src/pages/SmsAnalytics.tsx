@@ -44,7 +44,7 @@ function purposeLabel(purpose: string): string {
 type StatusFilter = 'all' | SmsLogStatus;
 
 const selectClass =
-  'rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary';
+  'w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:w-auto sm:py-2';
 
 export function SmsAnalytics() {
   const statsQuery = useQuery({
@@ -104,7 +104,7 @@ export function SmsAnalytics() {
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-text">SMS Analytics</h1>
+        <h1 className="text-xl font-semibold text-text sm:text-2xl">SMS Analytics</h1>
         <p className="mt-1 text-sm text-text-faint">
           Delivery activity across every SMS gateway (OTP and admin-sent messages)
         </p>
@@ -139,7 +139,8 @@ export function SmsAnalytics() {
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <section className="rounded-xl border border-border bg-surface p-5 lg:col-span-2">
+        {/* min-w-0 keeps the recharts container from pinning the grid column open once it has measured a width. */}
+        <section className="min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-5 lg:col-span-2">
           <h2 className="text-sm font-semibold text-text">Sends per day (last 14 days)</h2>
           <p className="mt-0.5 text-xs text-text-faint">Success vs. failed, by day</p>
 
@@ -181,7 +182,7 @@ export function SmsAnalytics() {
           </div>
         </section>
 
-        <section className="rounded-xl border border-border bg-surface p-5">
+        <section className="min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-5">
           <h2 className="text-sm font-semibold text-text">By purpose</h2>
           <p className="mt-0.5 text-xs text-text-faint">All-time send volume</p>
 
@@ -196,9 +197,11 @@ export function SmsAnalytics() {
                 .sort((a, b) => b.count - a.count)
                 .map((row) => (
                   <div key={row.purpose}>
-                    <div className="flex items-center justify-between text-xs text-text-muted">
-                      <span>{purposeLabel(row.purpose)}</span>
-                      <span className="font-medium text-text">{COUNT_FORMAT.format(row.count)}</span>
+                    <div className="flex items-center justify-between gap-2 text-xs text-text-muted">
+                      <span className="min-w-0 truncate">{purposeLabel(row.purpose)}</span>
+                      <span className="shrink-0 font-medium text-text">
+                        {COUNT_FORMAT.format(row.count)}
+                      </span>
                     </div>
                     <div className="mt-1 h-1.5 w-full rounded-full bg-surface-raised">
                       <div

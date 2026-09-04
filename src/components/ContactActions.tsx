@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { CopyIcon, MailIcon, PhoneIcon, SmsIcon, WhatsappIcon } from './icons';
 
+// `min-h-9` keeps these dense secondary actions tappable on phones; desktop keeps the compact height.
 const ACTION_CLASS =
-  'inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-medium text-text-muted transition-colors hover:border-primary/40 hover:bg-surface-raised hover:text-text';
+  'inline-flex min-h-9 items-center gap-1 whitespace-nowrap rounded-md border border-border px-2.5 py-1 text-xs font-medium text-text-muted transition-colors hover:border-primary/40 hover:bg-surface-raised hover:text-text sm:min-h-0 sm:px-2';
 
 /** wa.me and tel: want bare digits; stored numbers are E.164 (`+8801…`). */
 export function toDialDigits(phone: string | null | undefined): string | null {
@@ -76,9 +77,9 @@ function ChannelRow({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-      <div className="min-w-0">
-        <span className="text-xs text-text-faint">{label}</span>
-        <div className="flex items-center gap-1.5">
+      <div className="w-full min-w-0 sm:w-auto">
+        <span className="block break-words text-xs text-text-faint">{label}</span>
+        <div className="flex flex-wrap items-center gap-1.5">
           <span className="select-all break-all text-sm font-medium text-text">{value}</span>
           {badge}
         </div>

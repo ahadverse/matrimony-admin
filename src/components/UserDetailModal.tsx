@@ -72,7 +72,7 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted hover:bg-surface hover:text-text"
+              className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-text-muted hover:bg-surface hover:text-text sm:py-2"
             >
               Close
             </button>
@@ -80,7 +80,7 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
               <button
                 type="button"
                 onClick={() => onAddBalance(data.user)}
-                className="rounded-lg bg-primary/15 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/25"
+                className="rounded-lg bg-primary/15 px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/25 sm:py-2"
               >
                 Add balance
               </button>
@@ -90,7 +90,7 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
                 type="button"
                 onClick={() => onBan(data.user)}
                 className={clsx(
-                  'rounded-lg px-4 py-2 text-sm font-semibold',
+                  'rounded-lg px-4 py-2.5 text-sm font-semibold sm:py-2',
                   data.user.status === 'banned'
                     ? 'bg-success/15 text-success hover:bg-success/25'
                     : 'bg-danger/15 text-danger hover:bg-danger/25',
@@ -108,9 +108,9 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
       ) : query.isError || !data ? (
         <p className="py-10 text-center text-sm text-danger">Failed to load this user.</p>
       ) : (
-        <div className="max-h-[75vh] space-y-5 overflow-y-auto pr-1">
-          <div className="flex items-start gap-4">
-            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-surface-raised">
+        <div className="space-y-5">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-surface-raised sm:h-20 sm:w-20">
               {primaryPhoto ? (
                 <img
                   src={resolveMediaUrl(primaryPhoto.url) ?? undefined}
@@ -125,7 +125,9 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <h3 className="text-lg font-semibold text-text">{profile?.name ?? 'No profile'}</h3>
+                <h3 className="min-w-0 break-words text-base font-semibold text-text sm:text-lg">
+                  {profile?.name ?? 'No profile'}
+                </h3>
                 <Badge tone={data.user.status === 'active' ? 'success' : 'danger'}>
                   {data.user.status}
                 </Badge>
@@ -136,7 +138,7 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
                   </Badge>
                 )}
               </div>
-              <p className="mt-1 text-sm text-text-muted">
+              <p className="mt-1 break-words text-sm text-text-muted">
                 {data.user.phone}
                 {data.user.email ? ` · ${data.user.email}` : ''}
                 {age !== null ? ` · ${age} yrs` : ''}
@@ -147,7 +149,7 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
                   </>
                 ) : null}
               </p>
-              <p className="mt-1 text-sm text-text-muted">
+              <p className="mt-1 break-words text-sm text-text-muted">
                 Wallet: <span className="font-medium text-text">৳{TAKA.format(data.user.walletBalance)}</span>
                 {' · '}Joined {formatDate(data.user.createdAt)}
                 {' · '}Last active {formatDate(data.user.lastActiveAt, true)}
@@ -213,7 +215,7 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
 
           {profile && profile.photos.length > 0 && (
             <Section title={`Photos (${profile.photos.length})`}>
-              <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
                 {profile.photos.map((photo) => (
                   <a
                     key={photo.id}
@@ -249,11 +251,11 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
                     className="h-16 w-16 shrink-0 rounded-lg object-cover"
                   />
                 )}
-                <div className="text-sm">
+                <div className="min-w-0 text-sm">
                   <Badge tone={VERIFICATION_TONE[data.verification.status] ?? 'neutral'}>
                     {data.verification.status}
                   </Badge>
-                  <p className="mt-1 text-text-muted">NID: {data.verification.nidNumber}</p>
+                  <p className="mt-1 break-words text-text-muted">NID: {data.verification.nidNumber}</p>
                   <p className="text-text-faint">Submitted {formatDate(data.verification.createdAt)}</p>
                   {data.verification.rejectionReason && (
                     <p className="text-danger">Reason: {data.verification.rejectionReason}</p>
@@ -282,12 +284,15 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
             ) : (
               <div className="space-y-1.5">
                 {data.recentTransactions.map((tx) => (
-                  <div key={tx.id} className="flex items-center justify-between text-sm">
-                    <span className="text-text-muted">
+                  <div key={tx.id} className="flex items-start justify-between gap-3 text-sm">
+                    <span className="min-w-0 break-words text-text-muted">
                       {formatDate(tx.createdAt, true)} · {tx.type.replace('_', ' ')}
                     </span>
                     <span
-                      className={clsx('font-medium', tx.amount < 0 ? 'text-danger' : 'text-success')}
+                      className={clsx(
+                        'shrink-0 font-medium',
+                        tx.amount < 0 ? 'text-danger' : 'text-success',
+                      )}
                     >
                       {tx.amount < 0 ? '−' : '+'}৳{TAKA.format(Math.abs(tx.amount))}
                     </span>
