@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { useAuth } from '../auth/AuthContext';
@@ -26,11 +27,13 @@ import {
   DashboardIcon,
   InboxIcon,
   LogoutIcon,
+  MenuIcon,
   SettingsIcon,
   SmsIcon,
   TransactionsIcon,
   UsersIcon,
   VerificationIcon,
+  XIcon,
 } from './icons';
 
 const NAV_ITEMS = [
@@ -51,6 +54,8 @@ const NAV_ITEMS = [
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [isNavOpen, setNavOpen] = useState(false);
   useAdminTopupAlerts();
   useSupportChatAlerts();
   useProfileApprovalAlerts();
@@ -101,25 +106,78 @@ export function AppShell({ children }: { children: ReactNode }) {
     '/assistant-requests': pendingAssistantRequestsQuery.data?.total ?? 0,
   };
 
+  // Route changes come from tapping a nav link inside the drawer, so the drawer
+  // has to close itself — otherwise it stays over the page it just navigated to.
+  useEffect(() => {
+    setNavOpen(false);
+  }, [pathname]);
+
+  // The drawer is a fixed overlay; without this the page behind it scrolls under
+  // the user's finger instead of the nav list.
+  useEffect(() => {
+    if (!isNavOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [isNavOpen]);
+
+  useEffect(() => {
+    if (!isNavOpen) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setNavOpen(false);
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [isNavOpen]);
+
   function handleLogout() {
     logout();
     navigate('/login', { replace: true });
   }
 
+  const totalAlerts = Object.values(navBadgeCounts).reduce((sum, n) => sum + n, 0);
+  const activeLabel = NAV_ITEMS.find((item) => pathname.startsWith(item.to))?.label ?? 'Admin';
+
   return (
     <div className="flex min-h-svh bg-bg text-text">
-      <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-surface">
-        <div className="flex items-center gap-2.5 border-b border-border px-6 py-5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-base font-bold text-white">
+      {isNavOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          onClick={() => setNavOpen(false)}
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px] motion-safe:animate-[fadeIn_0.15s_ease-out] lg:hidden"
+        />
+      )}
+
+      <aside
+        className={clsx(
+          // Off-canvas drawer under lg, a plain static column from lg up.
+          'fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r border-border bg-surface transition-transform duration-200 lg:static lg:translate-x-0',
+          isNavOpen ? 'translate-x-0' : '-translate-x-full',
+        )}
+      >
+        <button
+          type="button"
+          onClick={() => setNavOpen(false)}
+          aria-label="Close navigation"
+          className="absolute right-3 top-4 rounded-md p-1.5 text-text-faint hover:bg-surface-raised hover:text-text lg:hidden"
+        >
+          <XIcon className="h-5 w-5" />
+        </button>
+
+        <div className="flex items-center gap-2.5 border-b border-border px-6 py-5 pr-12 lg:pr-6">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-base font-bold text-white">
             B
           </div>
-          <div className="leading-tight">
-            <p className="text-sm font-semibold text-text">Biye Kora Lagbe</p>
-            <p className="text-xs text-text-faint">Admin Panel</p>
+          <div className="min-w-0 leading-tight">
+            <p className="truncate text-sm font-semibold text-text">Biye Kora Lagbe</p>
+            <p className="truncate text-xs text-text-faint">Admin Panel</p>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
             const badgeCount = navBadgeCounts[to] ?? 0;
             return (
@@ -163,8 +221,32 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-6xl px-8 py-8">{children}</div>
+      <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+        <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-surface/95 px-4 py-3 backdrop-blur lg:hidden">
+          <button
+            type="button"
+            onClick={() => setNavOpen(true)}
+            aria-label="Open navigation"
+            aria-expanded={isNavOpen}
+            className="relative -ml-1 rounded-lg p-2 text-text-muted hover:bg-surface-raised hover:text-text"
+          >
+            <MenuIcon className="h-5 w-5" />
+            {totalAlerts > 0 && (
+              <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-danger" />
+            )}
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-text">{activeLabel}</p>
+            <p className="truncate text-[11px] text-text-faint">Biye Kora Lagbe Admin</p>
+          </div>
+          {totalAlerts > 0 && (
+            <span className="flex h-6 min-w-[24px] items-center justify-center rounded-full bg-danger px-1.5 text-[11px] font-semibold text-white">
+              {totalAlerts > 99 ? '99+' : totalAlerts}
+            </span>
+          )}
+        </div>
+
+        <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 lg:px-8 lg:py-8">{children}</div>
       </main>
     </div>
   );

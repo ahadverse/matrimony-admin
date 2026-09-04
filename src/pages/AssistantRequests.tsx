@@ -78,20 +78,20 @@ export function AssistantRequests() {
     <div>
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-text">Assistant Requests</h1>
+          <h1 className="text-xl font-semibold text-text sm:text-2xl">Assistant Requests</h1>
           <p className="mt-1 text-sm text-text-faint">
             Leads submitted through the Assistance Service landing page
           </p>
         </div>
 
-        <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
+        <div className="flex w-full gap-1 rounded-lg border border-border bg-surface p-1 sm:w-auto">
           {FILTERS.map((f) => (
             <button
               key={f.value}
               type="button"
               onClick={() => handleFilterChange(f.value)}
               className={clsx(
-                'rounded-md px-3 py-1.5 text-sm font-medium',
+                'flex-1 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium sm:flex-none sm:py-1.5',
                 filter === f.value ? 'bg-primary text-white' : 'text-text-muted hover:text-text',
               )}
             >
@@ -166,7 +166,7 @@ function RequestCard({
     <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 sm:flex-row sm:items-center">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2">
-          <h3 className="text-base font-semibold text-text">{request.name}</h3>
+          <h3 className="min-w-0 break-words text-base font-semibold text-text">{request.name}</h3>
           <Badge tone={STATUS_TONE[request.status]}>{request.status}</Badge>
           {/* Always rendered, including the "no plan" case — a blank would read
               as a missing column rather than a lead who skipped the pricing. */}
@@ -174,9 +174,9 @@ function RequestCard({
             {request.plan ? PLAN_LABELS[request.plan] : 'No plan'}
           </Badge>
         </div>
-        <p className="mt-0.5 text-sm text-text-muted">{request.phone} · {request.email}</p>
+        <p className="mt-0.5 break-words text-sm text-text-muted">{request.phone} · {request.email}</p>
         {request.profileId && (
-          <p className="mt-0.5 text-xs text-text-faint">Profile ID: {request.profileId}</p>
+          <p className="mt-0.5 break-words text-xs text-text-faint">Profile ID: {request.profileId}</p>
         )}
         <p className="mt-1.5 text-xs text-text-faint">
           Submitted{' '}
@@ -190,13 +190,13 @@ function RequestCard({
         </p>
       </div>
 
-      <div className="flex shrink-0 gap-2 sm:flex-col">
+      <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col">
         {request.status === 'pending' && (
           <button
             type="button"
             onClick={() => onSetStatus('contacted')}
             disabled={isUpdating}
-            className="flex-1 rounded-lg bg-primary/15 px-4 py-2 text-sm font-semibold text-primary hover:enabled:bg-primary/25 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
+            className="flex-1 whitespace-nowrap rounded-lg bg-primary/15 px-4 py-2.5 text-sm font-semibold text-primary hover:enabled:bg-primary/25 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:py-2"
           >
             {isUpdating ? 'Updating…' : 'Mark contacted'}
           </button>
@@ -206,7 +206,7 @@ function RequestCard({
             type="button"
             onClick={() => onSetStatus('closed')}
             disabled={isUpdating}
-            className="flex-1 rounded-lg bg-success/15 px-4 py-2 text-sm font-semibold text-success hover:enabled:bg-success/25 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
+            className="flex-1 whitespace-nowrap rounded-lg bg-success/15 px-4 py-2.5 text-sm font-semibold text-success hover:enabled:bg-success/25 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:py-2"
           >
             {isUpdating ? 'Updating…' : 'Mark closed'}
           </button>
@@ -216,7 +216,7 @@ function RequestCard({
             type="button"
             onClick={() => onSetStatus('pending')}
             disabled={isUpdating}
-            className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted hover:enabled:bg-surface-raised hover:enabled:text-text disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
+            className="flex-1 whitespace-nowrap rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-text-muted hover:enabled:bg-surface-raised hover:enabled:text-text disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:py-2"
           >
             {isUpdating ? 'Updating…' : 'Reopen'}
           </button>

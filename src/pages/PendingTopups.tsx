@@ -51,7 +51,7 @@ export function PendingTopups() {
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-text">Pending bKash Top-ups</h1>
+        <h1 className="text-xl font-semibold text-text sm:text-2xl">Pending bKash Top-ups</h1>
         <p className="mt-1 text-sm text-text-faint">
           Verify the Transaction ID against your bKash account, then approve or reject.
         </p>
@@ -131,7 +131,7 @@ function TopupCard({
           <span className="text-sm text-text-faint">{tx.user?.name ?? tx.user?.phone ?? 'Unknown user'}</span>
         </div>
         <p className="mt-0.5 text-sm text-text-muted">
-          TrxID: <span className="font-mono">{tx.providerTransactionId}</span>
+          TrxID: <span className="font-mono break-all">{tx.providerTransactionId}</span>
         </p>
         <p className="mt-0.5 text-sm text-text-muted">Sent from: {tx.payerAccountNumber}</p>
         <p className="mt-1.5 text-xs text-text-faint">
@@ -144,14 +144,14 @@ function TopupCard({
           type="button"
           onClick={onApprove}
           disabled={isApproving}
-          className="flex-1 rounded-lg bg-success/15 px-4 py-2 text-sm font-semibold text-success hover:enabled:bg-success/25 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
+          className="flex-1 rounded-lg bg-success/15 px-4 py-2.5 text-sm font-semibold text-success hover:enabled:bg-success/25 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:py-2"
         >
           {isApproving ? 'Approving…' : 'Approve'}
         </button>
         <button
           type="button"
           onClick={onReject}
-          className="flex-1 rounded-lg bg-danger/15 px-4 py-2 text-sm font-semibold text-danger hover:bg-danger/25 sm:flex-none"
+          className="flex-1 rounded-lg bg-danger/15 px-4 py-2.5 text-sm font-semibold text-danger hover:bg-danger/25 sm:flex-none sm:py-2"
         >
           Reject
         </button>
@@ -183,7 +183,7 @@ function RejectModal({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted hover:bg-surface hover:text-text"
+            className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-text-muted hover:bg-surface hover:text-text sm:py-2"
           >
             Cancel
           </button>
@@ -191,7 +191,7 @@ function RejectModal({
             type="button"
             disabled={!trimmed || isSubmitting}
             onClick={() => onSubmit(trimmed)}
-            className="rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white hover:enabled:bg-danger/90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-lg bg-danger px-4 py-2.5 text-sm font-medium text-white hover:enabled:bg-danger/90 disabled:cursor-not-allowed disabled:opacity-60 sm:py-2"
           >
             {isSubmitting ? 'Rejecting…' : 'Reject top-up'}
           </button>

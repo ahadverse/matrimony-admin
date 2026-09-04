@@ -30,6 +30,13 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  /* Tables scroll inside their own wrappers; the page itself never should. */
+  overflow-x: hidden;
+  /* Stops iOS inflating type in landscape. */
+  -webkit-text-size-adjust: 100%;
+  /* Unbroken strings — phone numbers, emails, transaction ids — are what
+     actually blow out a 360px layout: nothing in them is a legal break point. */
+  overflow-wrap: break-word;
 }
 
 #root {
@@ -46,6 +53,17 @@ select,
 textarea,
 button {
   font-family: inherit;
+}
+
+/* Safari zooms the whole viewport when a focused field is under 16px, which
+   leaves the admin panned sideways after every tap. Phones only — desktop keeps
+   the denser 14px controls. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 button:not(:disabled),

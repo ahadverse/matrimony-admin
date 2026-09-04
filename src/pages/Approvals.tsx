@@ -118,7 +118,7 @@ export function Approvals() {
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-text">Approvals</h1>
+        <h1 className="text-xl font-semibold text-text sm:text-2xl">Approvals</h1>
         <p className="mt-1 text-sm text-text-faint">
           Review new profiles before they go live — every submitted detail and contact channel is here
         </p>
@@ -136,7 +136,7 @@ export function Approvals() {
             setGenderFilter(e.target.value as GenderFilter);
             setPage(1);
           }}
-          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          className="min-h-10 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:min-h-0 sm:w-auto"
         >
           <option value="all">All genders</option>
           <option value="male">Male</option>
@@ -148,7 +148,7 @@ export function Approvals() {
             setSortChoice(e.target.value as SortChoice);
             setPage(1);
           }}
-          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          className="min-h-10 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:min-h-0 sm:w-auto"
         >
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -160,7 +160,7 @@ export function Approvals() {
           <button
             type="button"
             onClick={() => setExpandedIds(allExpanded ? [] : profiles.map((p) => p.id))}
-            className="rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-text-muted hover:bg-surface-raised hover:text-text"
+            className="min-h-10 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-text-muted hover:bg-surface-raised hover:text-text sm:min-h-0 sm:w-auto"
           >
             {allExpanded ? 'Collapse all details' : 'Expand all details'}
           </button>
@@ -375,7 +375,7 @@ function ApprovalCard({
           <button
             type="button"
             onClick={onToggleExpanded}
-            className="mt-2.5 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+            className="mt-1.5 inline-flex min-h-10 items-center gap-1 text-sm font-medium text-primary hover:underline sm:mt-2.5 sm:min-h-0"
           >
             {expanded ? 'Hide full details' : 'Show full details'}
             <ChevronDownIcon
@@ -384,11 +384,11 @@ function ApprovalCard({
           </button>
         </div>
 
-        <div className="flex shrink-0 gap-2 sm:flex-col">
+        <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col sm:flex-nowrap">
           <button
             type="button"
             onClick={onView}
-            className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted hover:bg-surface-raised hover:text-text sm:flex-none"
+            className="min-h-10 flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted hover:bg-surface-raised hover:text-text sm:min-h-0 sm:flex-none"
           >
             View
           </button>
@@ -396,14 +396,14 @@ function ApprovalCard({
             type="button"
             onClick={onApprove}
             disabled={isApproving}
-            className="flex-1 rounded-lg bg-success/15 px-4 py-2 text-sm font-semibold text-success hover:enabled:bg-success/25 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
+            className="min-h-10 flex-1 rounded-lg bg-success/15 px-4 py-2 text-sm font-semibold text-success hover:enabled:bg-success/25 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-0 sm:flex-none"
           >
             {isApproving ? 'Approving…' : 'Approve'}
           </button>
           <button
             type="button"
             onClick={onReject}
-            className="flex-1 rounded-lg bg-danger/15 px-4 py-2 text-sm font-semibold text-danger hover:bg-danger/25 sm:flex-none"
+            className="min-h-10 flex-1 rounded-lg bg-danger/15 px-4 py-2 text-sm font-semibold text-danger hover:bg-danger/25 sm:min-h-0 sm:flex-none"
           >
             Reject
           </button>
@@ -414,7 +414,7 @@ function ApprovalCard({
         <div className="mt-4 space-y-5 border-t border-border pt-4">
           {profile.photos.length > 0 && (
             <Section title={`Photos (${profile.photos.length})`}>
-              <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-8">
                 {profile.photos.map((photo) => (
                   <a
                     key={photo.id}

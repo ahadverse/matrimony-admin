@@ -12,6 +12,24 @@ const base = {
   strokeLinejoin: 'round' as const,
 };
 
+export function MenuIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 6h16" />
+      <path d="M4 12h16" />
+      <path d="M4 18h16" />
+    </svg>
+  );
+}
+
+export function ChevronLeftIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="m15 5-7 7 7 7" />
+    </svg>
+  );
+}
+
 export function DashboardIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>

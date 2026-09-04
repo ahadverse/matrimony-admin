@@ -112,21 +112,21 @@ export function Verification() {
     <div>
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-text">Verification</h1>
+          <h1 className="text-xl font-semibold text-text sm:text-2xl">Verification</h1>
           <p className="mt-1 text-sm text-text-faint">
             Review submitted NID numbers and selfies to grant the verified badge
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className="flex w-full gap-1 rounded-lg border border-border bg-surface p-1 sm:w-auto">
             {FILTERS.map((f) => (
               <button
                 key={f.value}
                 type="button"
                 onClick={() => handleFilterChange(f.value)}
                 className={clsx(
-                  'rounded-md px-3 py-1.5 text-sm font-medium',
+                  'flex-1 rounded-md px-3 py-2 text-sm font-medium sm:flex-none sm:py-1.5',
                   filter === f.value ? 'bg-primary text-white' : 'text-text-muted hover:text-text',
                 )}
               >
@@ -138,7 +138,7 @@ export function Verification() {
             type="button"
             onClick={() => exportMutation.mutate()}
             disabled={exportMutation.isPending}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-text-muted hover:enabled:bg-surface-raised hover:enabled:text-text disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-text-muted hover:enabled:bg-surface-raised hover:enabled:text-text disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-0 sm:w-auto sm:justify-start"
           >
             <DownloadIcon className="h-4 w-4" />
             {exportMutation.isPending ? 'Exporting…' : 'Export'}
@@ -158,7 +158,7 @@ export function Verification() {
             setSortChoice(e.target.value as SortChoice);
             setPage(1);
           }}
-          className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          className="min-h-10 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:min-h-0 sm:w-auto"
         >
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -261,7 +261,7 @@ function SubmissionCard({
         type="button"
         onClick={onView}
         aria-label="View full details"
-        className="h-24 w-24 shrink-0 overflow-hidden rounded-lg bg-surface-raised transition-opacity hover:opacity-80"
+        className="h-32 w-32 shrink-0 overflow-hidden rounded-lg bg-surface-raised transition-opacity hover:opacity-80 sm:h-24 sm:w-24"
       >
         {selfieUrl ? (
           <img src={selfieUrl} alt="Submitted selfie with NID" className="h-full w-full object-cover" />
@@ -290,11 +290,11 @@ function SubmissionCard({
         </p>
       </div>
 
-      <div className="flex shrink-0 gap-2 sm:flex-col">
+      <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col sm:flex-nowrap">
         <button
           type="button"
           onClick={onView}
-          className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-semibold text-text-muted hover:bg-surface-raised hover:text-text sm:flex-none"
+          className="min-h-10 flex-1 rounded-lg border border-border px-4 py-2 text-sm font-semibold text-text-muted hover:bg-surface-raised hover:text-text sm:min-h-0 sm:flex-none"
         >
           View details
         </button>
@@ -304,14 +304,14 @@ function SubmissionCard({
               type="button"
               onClick={onApprove}
               disabled={isApproving}
-              className="flex-1 rounded-lg bg-success/15 px-4 py-2 text-sm font-semibold text-success hover:enabled:bg-success/25 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
+              className="min-h-10 flex-1 rounded-lg bg-success/15 px-4 py-2 text-sm font-semibold text-success hover:enabled:bg-success/25 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-0 sm:flex-none"
             >
               {isApproving ? 'Approving…' : 'Approve'}
             </button>
             <button
               type="button"
               onClick={onReject}
-              className="flex-1 rounded-lg bg-danger/15 px-4 py-2 text-sm font-semibold text-danger hover:bg-danger/25 sm:flex-none"
+              className="min-h-10 flex-1 rounded-lg bg-danger/15 px-4 py-2 text-sm font-semibold text-danger hover:bg-danger/25 sm:min-h-0 sm:flex-none"
             >
               Reject
             </button>
@@ -395,7 +395,7 @@ function DetailModal({
           <img
             src={selfieUrl}
             alt="Submitted selfie with NID"
-            className="max-h-[60vh] w-full object-contain"
+            className="max-h-[50svh] w-full object-contain sm:max-h-[60vh]"
           />
         ) : (
           <div className="flex h-48 w-full items-center justify-center text-sm text-text-faint">No photo</div>
@@ -408,20 +408,20 @@ function DetailModal({
       </div>
 
       <dl className="mt-3 space-y-2 text-sm">
-        <div className="flex justify-between gap-4">
+        <div className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
           <dt className="text-text-faint">NID number</dt>
-          <dd className="font-mono text-text">{submission.nidNumber}</dd>
+          <dd className="break-all font-mono text-text">{submission.nidNumber}</dd>
         </div>
-        <div className="flex justify-between gap-4">
+        <div className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
           <dt className="text-text-faint">Phone</dt>
-          <dd className="text-text">{submission.user?.phone ?? '—'}</dd>
+          <dd className="break-all text-text">{submission.user?.phone ?? '—'}</dd>
         </div>
-        <div className="flex justify-between gap-4">
+        <div className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
           <dt className="text-text-faint">Submitted</dt>
           <dd className="text-text">{formatDateTime(submission.createdAt)}</dd>
         </div>
         {submission.reviewedAt && (
-          <div className="flex justify-between gap-4">
+          <div className="flex flex-wrap justify-between gap-x-4 gap-y-0.5">
             <dt className="text-text-faint">Reviewed</dt>
             <dd className="text-text">{formatDateTime(submission.reviewedAt)}</dd>
           </div>

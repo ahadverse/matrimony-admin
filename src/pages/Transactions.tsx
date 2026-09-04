@@ -32,9 +32,10 @@ type TypeFilter = 'all' | TransactionType;
 type StatusFilter = 'all' | TransactionStatus;
 
 const selectClass =
-  'rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary';
+  'w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:w-auto sm:py-2';
+// `min-w-0 flex-1` lets the two date fields share one row on a phone instead of overflowing.
 const dateInputClass =
-  'rounded-lg border border-border bg-surface px-2.5 py-2 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary';
+  'min-w-0 flex-1 rounded-lg border border-border bg-surface px-2.5 py-2.5 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:flex-none sm:py-2';
 
 export function Transactions() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -106,12 +107,12 @@ export function Transactions() {
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-text">Transactions</h1>
+        <h1 className="text-xl font-semibold text-text sm:text-2xl">Transactions</h1>
         <p className="mt-1 text-sm text-text-faint">Wallet activity across the platform</p>
       </header>
 
       {userIdParam && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2.5 text-sm text-primary">
+        <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2.5 text-sm text-primary">
           <span>Showing transactions for one user only</span>
           <button
             type="button"
@@ -157,8 +158,8 @@ export function Transactions() {
           <option value="pending">Pending</option>
           <option value="failed">Failed</option>
         </select>
-        <div className="flex items-center gap-1.5 text-sm text-text-muted">
-          <label htmlFor="tx-from" className="text-text-faint">
+        <div className="flex w-full items-center gap-1.5 text-sm text-text-muted sm:w-auto">
+          <label htmlFor="tx-from" className="shrink-0 text-text-faint">
             From
           </label>
           <input
@@ -171,7 +172,7 @@ export function Transactions() {
             }}
             className={dateInputClass}
           />
-          <label htmlFor="tx-to" className="text-text-faint">
+          <label htmlFor="tx-to" className="shrink-0 text-text-faint">
             To
           </label>
           <input
