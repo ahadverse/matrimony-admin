@@ -42,9 +42,16 @@ interface UserDetailModalProps {
   onClose: () => void;
   onBan?: (user: AdminUserDetailUser) => void;
   onAddBalance?: (user: AdminUserDetailUser) => void;
+  onEdit?: (user: AdminUserDetailUser) => void;
 }
 
-export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDetailModalProps) {
+export function UserDetailModal({
+  userId,
+  onClose,
+  onBan,
+  onAddBalance,
+  onEdit,
+}: UserDetailModalProps) {
   const query = useQuery({
     queryKey: ['admin', 'user-detail', userId],
     queryFn: () => getUserDetail(userId),
@@ -76,6 +83,15 @@ export function UserDetailModal({ userId, onClose, onBan, onAddBalance }: UserDe
             >
               Close
             </button>
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => onEdit(data.user)}
+                className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-text-muted hover:bg-surface hover:text-text sm:py-2"
+              >
+                Edit
+              </button>
+            )}
             {onAddBalance && (
               <button
                 type="button"

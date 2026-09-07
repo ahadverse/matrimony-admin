@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { sendSms } from '../api/admin';
+import { getSmsStatus, sendSms } from '../api/admin';
+import { apiErrorMessage } from '../api/client';
 
 const MESSAGE_MAX_LENGTH = 918;
 
@@ -13,13 +14,18 @@ export function SendSms() {
   const [phone, setPhone] = useState(searchParams.get('phone') ?? '');
   const [message, setMessage] = useState('');
 
+  const statusQuery = useQuery({ queryKey: ['admin', 'sms-status'], queryFn: getSmsStatus });
+  // Treated as enabled until the check answers, so a slow request doesn't flash
+  // a "switched off" warning at an admin whose gateway is perfectly fine.
+  const smsEnabled = statusQuery.data?.enabled ?? true;
+
   const mutation = useMutation({
     mutationFn: sendSms,
     onSuccess: () => {
       toast.success('SMS sent');
       setMessage('');
     },
-    onError: () => toast.error('Failed to send SMS'),
+    onError: (error) => toast.error(apiErrorMessage(error, 'Failed to send SMS')),
   });
 
   function handleSubmit(e: FormEvent) {
@@ -43,6 +49,16 @@ export function SendSms() {
         <h1 className="text-xl font-semibold text-text sm:text-2xl">Send SMS</h1>
         <p className="mt-1 text-sm text-text-faint">Manually send a text message to any phone number</p>
       </header>
+
+      {!smsEnabled && (
+        <div className="mb-4 max-w-lg rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+          <p className="font-semibold">SMS sending is switched off</p>
+          <p className="mt-1 text-text-muted">
+            No message will reach a phone while <code>SMS_ENABLED</code> is not <code>true</code> on the
+            API. Verification codes are being emailed instead. Set it and restart the API to send again.
+          </p>
+        </div>
+      )}
 
       <form
         onSubmit={handleSubmit}
@@ -82,10 +98,10 @@ export function SendSms() {
         <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center">
           <button
             type="submit"
-            disabled={mutation.isPending}
+            disabled={mutation.isPending || !smsEnabled}
             className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:enabled:bg-primary-light disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:py-2"
           >
-            {mutation.isPending ? 'Sending…' : 'Send SMS'}
+            {mutation.isPending ? 'Sending…' : smsEnabled ? 'Send SMS' : 'Sending disabled'}
           </button>
         </div>
       </form>

@@ -4,13 +4,22 @@
   --color-bg: #0b0710;
   --color-surface: #150f1a;
   --color-surface-raised: #1e1626;
-  --color-border: #2c2032;
+  /* Raised from #2c2032 (1.14:1 on a raised surface), which left table rules
+     and card edges all but invisible. */
+  --color-border: #3d2e45;
   --color-primary: #ec4899;
   --color-primary-light: #f472b6;
   --color-gold: #e8b04b;
+
+  /* Contrast against the three grounds above, worst case (surface-raised)
+     first: text 13.9:1, muted 10.8:1, faint 6.3:1 — all clear of the 4.5:1 AA
+     floor. `faint` was #7d6c8c, which measured 3.7:1: it carries the
+     timestamps, field captions and empty-state lines that fill this panel, and
+     at that value they were genuinely hard to read. Measure any replacement
+     against --color-surface-raised, the lightest ground and so the worst case. */
   --color-text: #f5f1f8;
-  --color-text-muted: #b8a8c4;
-  --color-text-faint: #7d6c8c;
+  --color-text-muted: #d3c6dc;
+  --color-text-faint: #a495b0;
   --color-success: #34d399;
   --color-danger: #f87171;
 

@@ -2,8 +2,23 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
-import { adjustWallet, banUser, getUsers, unbanUser } from '../api/admin';
-import type { AdminUserRecord, AdminUserDetailUser, Gender, SortOrder, UserStatus } from '../api/types';
+import {
+  adjustWallet,
+  banUser,
+  deleteUser,
+  getUserFilterOptions,
+  getUsers,
+  unbanUser,
+} from '../api/admin';
+import { apiErrorMessage } from '../api/client';
+import type {
+  AdminUserRecord,
+  AdminUserDetailUser,
+  Gender,
+  MaritalStatus,
+  SortOrder,
+  UserStatus,
+} from '../api/types';
 import { Badge } from '../components/Badge';
 import { Pagination } from '../components/Pagination';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -11,7 +26,10 @@ import { Modal } from '../components/Modal';
 import { SearchInput } from '../components/SearchInput';
 import { SortableTh } from '../components/SortableTh';
 import { UserDetailModal } from '../components/UserDetailModal';
+import { UserEditModal } from '../components/UserEditModal';
 import { SpinnerIcon } from '../components/icons';
+import { MARITAL_STATUSES } from '../lib/profileOptions';
+import { humanize } from '../components/ProfileDetails';
 
 const PAGE_SIZE = 15;
 const TAKA = new Intl.NumberFormat('en-BD');
@@ -27,21 +45,44 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
   { value: 'banned', label: 'Banned' },
 ];
 
+const SELECT_CLASS =
+  'w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:w-auto sm:py-2';
+
 export function Users() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [genderFilter, setGenderFilter] = useState<GenderFilter>('all');
   const [verifiedFilter, setVerifiedFilter] = useState<VerifiedFilter>('all');
+  const [districtFilter, setDistrictFilter] = useState('');
+  const [subDistrictFilter, setSubDistrictFilter] = useState('');
+  const [maritalFilter, setMaritalFilter] = useState('');
+  const [educationFilter, setEducationFilter] = useState('');
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState<SortOrder>('DESC');
   const [banTarget, setBanTarget] = useState<UserRef | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<UserRef | null>(null);
   const [walletTarget, setWalletTarget] = useState<UserRef | null>(null);
   const [detailUserId, setDetailUserId] = useState<string | null>(null);
+  const [editUserId, setEditUserId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['admin', 'users', page, statusFilter, genderFilter, verifiedFilter, search, sortBy, sortOrder],
+    queryKey: [
+      'admin',
+      'users',
+      page,
+      statusFilter,
+      genderFilter,
+      verifiedFilter,
+      districtFilter,
+      subDistrictFilter,
+      maritalFilter,
+      educationFilter,
+      search,
+      sortBy,
+      sortOrder,
+    ],
     queryFn: () =>
       getUsers({
         page,
@@ -49,12 +90,25 @@ export function Users() {
         status: statusFilter === 'all' ? undefined : statusFilter,
         gender: genderFilter === 'all' ? undefined : genderFilter,
         verified: verifiedFilter === 'all' ? undefined : verifiedFilter === 'true',
+        district: districtFilter || undefined,
+        subDistrict: subDistrictFilter || undefined,
+        maritalStatus: (maritalFilter as MaritalStatus) || undefined,
+        education: educationFilter || undefined,
         search: search || undefined,
         sortBy,
         sortOrder,
       }),
     placeholderData: (prev) => prev,
   });
+
+  // Refetched per district so the thana list only offers sub-districts that
+  // exist inside the selected one.
+  const optionsQuery = useQuery({
+    queryKey: ['admin', 'user-filter-options', districtFilter],
+    queryFn: () => getUserFilterOptions(districtFilter || undefined),
+    placeholderData: (prev) => prev,
+  });
+  const filterOptions = optionsQuery.data;
 
   const banMutation = useMutation({
     mutationFn: (user: UserRef) =>
@@ -81,6 +135,20 @@ export function Users() {
     onError: () => toast.error('Could not update wallet balance'),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (user: UserRef) => deleteUser(user.id),
+    onSuccess: () => {
+      toast.success('User deleted');
+      setDeleteTarget(null);
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user-filter-options'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
+    },
+    onError: (error) =>
+      toast.error(apiErrorMessage(error, 'Could not delete this user. Please try again.')),
+  });
+
   function handleSort(key: string) {
     if (sortBy === key) {
       setSortOrder((prev) => (prev === 'ASC' ? 'DESC' : 'ASC'));
@@ -97,6 +165,9 @@ export function Users() {
   }
 
   const users = query.data?.items ?? [];
+  const hasProfileFilters = Boolean(
+    districtFilter || subDistrictFilter || maritalFilter || educationFilter,
+  );
 
   return (
     <div>
@@ -140,7 +211,7 @@ export function Users() {
             setGenderFilter(e.target.value as GenderFilter);
             setPage(1);
           }}
-          className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:w-auto sm:py-2"
+          className={SELECT_CLASS}
         >
           <option value="all">All genders</option>
           <option value="male">Male</option>
@@ -152,12 +223,90 @@ export function Users() {
             setVerifiedFilter(e.target.value as VerifiedFilter);
             setPage(1);
           }}
-          className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:w-auto sm:py-2"
+          className={SELECT_CLASS}
         >
           <option value="all">Verified & unverified</option>
           <option value="true">Verified only</option>
           <option value="false">Unverified only</option>
         </select>
+        <select
+          value={districtFilter}
+          onChange={(e) => {
+            setDistrictFilter(e.target.value);
+            // The thana list is scoped to the district, so a selection left over
+            // from the previous one would filter the table down to nothing.
+            setSubDistrictFilter('');
+            setPage(1);
+          }}
+          className={SELECT_CLASS}
+        >
+          <option value="">All districts</option>
+          {(filterOptions?.districts ?? []).map((district) => (
+            <option key={district} value={district}>
+              {district}
+            </option>
+          ))}
+        </select>
+        <select
+          value={subDistrictFilter}
+          onChange={(e) => {
+            setSubDistrictFilter(e.target.value);
+            setPage(1);
+          }}
+          className={SELECT_CLASS}
+        >
+          <option value="">All thanas</option>
+          {(filterOptions?.subDistricts ?? []).map((subDistrict) => (
+            <option key={subDistrict} value={subDistrict}>
+              {subDistrict}
+            </option>
+          ))}
+        </select>
+        <select
+          value={maritalFilter}
+          onChange={(e) => {
+            setMaritalFilter(e.target.value);
+            setPage(1);
+          }}
+          className={SELECT_CLASS}
+        >
+          <option value="">Any marital status</option>
+          {MARITAL_STATUSES.map((status) => (
+            <option key={status} value={status}>
+              {humanize(status)}
+            </option>
+          ))}
+        </select>
+        <select
+          value={educationFilter}
+          onChange={(e) => {
+            setEducationFilter(e.target.value);
+            setPage(1);
+          }}
+          className={SELECT_CLASS}
+        >
+          <option value="">Any qualification</option>
+          {(filterOptions?.educations ?? []).map((education) => (
+            <option key={education} value={education}>
+              {education}
+            </option>
+          ))}
+        </select>
+        {hasProfileFilters && (
+          <button
+            type="button"
+            onClick={() => {
+              setDistrictFilter('');
+              setSubDistrictFilter('');
+              setMaritalFilter('');
+              setEducationFilter('');
+              setPage(1);
+            }}
+            className="rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-text-muted hover:bg-surface-raised hover:text-text sm:py-2"
+          >
+            Clear filters
+          </button>
+        )}
         {query.isFetching && !query.isLoading && (
           <span className="flex items-center gap-1.5 text-xs text-text-faint">
             <SpinnerIcon className="h-3.5 w-3.5 animate-spin" />
@@ -178,12 +327,14 @@ export function Users() {
           query.isFetching && !query.isLoading && 'opacity-60',
         )}
       >
-        <table className="w-full min-w-[760px] text-left text-sm">
+        <table className="w-full min-w-[1120px] text-left text-sm">
           <thead>
             <tr className="border-b border-border text-xs uppercase tracking-wide text-text-faint">
               <SortableTh label="Phone" sortKey="phone" activeSortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
               <SortableTh label="Profile" sortKey="name" activeSortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
               <th className="px-4 py-3 font-medium">District</th>
+              <th className="px-4 py-3 font-medium">Marital</th>
+              <th className="px-4 py-3 font-medium">Qualification</th>
               <th className="px-4 py-3 font-medium">Gender</th>
               <th className="px-4 py-3 font-medium">Verified</th>
               <th className="px-4 py-3 font-medium">Status</th>
@@ -195,13 +346,13 @@ export function Users() {
           <tbody>
             {query.isLoading ? (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-text-faint">
+                <td colSpan={11} className="px-4 py-10 text-center text-text-faint">
                   Loading users…
                 </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-text-faint">
+                <td colSpan={11} className="px-4 py-10 text-center text-text-faint">
                   No users match this filter.
                 </td>
               </tr>
@@ -224,6 +375,14 @@ export function Users() {
                     {user.profile
                       ? [user.profile.subDistrict, user.profile.district].filter(Boolean).join(', ')
                       : <span className="text-text-faint">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-text-muted">
+                    {humanize(user.profile?.maritalStatus) ?? (
+                      <span className="text-text-faint">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-text-muted">
+                    {user.profile?.education ?? <span className="text-text-faint">—</span>}
                   </td>
                   <td className="px-4 py-3 capitalize text-text-muted">{user.gender}</td>
                   <td className="px-4 py-3">
@@ -257,6 +416,13 @@ export function Users() {
                       </button>
                       <button
                         type="button"
+                        onClick={() => setEditUserId(user.id)}
+                        className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-text-muted hover:bg-surface-raised hover:text-text"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setWalletTarget(user)}
                         className="rounded-lg bg-primary/15 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/25"
                       >
@@ -273,6 +439,13 @@ export function Users() {
                         )}
                       >
                         {user.status === 'banned' ? 'Unban' : 'Ban'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget(user)}
+                        className="rounded-lg bg-danger px-3 py-1.5 text-sm font-medium text-white hover:bg-danger/90"
+                      >
+                        Delete
                       </button>
                     </div>
                   </td>
@@ -306,7 +479,15 @@ export function Users() {
             setDetailUserId(null);
             setWalletTarget(user);
           }}
+          onEdit={(user: AdminUserDetailUser) => {
+            setDetailUserId(null);
+            setEditUserId(user.id);
+          }}
         />
+      )}
+
+      {editUserId && (
+        <UserEditModal userId={editUserId} onClose={() => setEditUserId(null)} />
       )}
 
       {banTarget && (
@@ -322,6 +503,18 @@ export function Users() {
           isLoading={banMutation.isPending}
           onConfirm={() => banMutation.mutate(banTarget)}
           onCancel={() => setBanTarget(null)}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Delete user"
+          message={`Permanently delete ${deleteTarget.phone ?? 'this account'}? Their profile, photos, chats, matches, swipes, shortlists, verification and transaction history are all removed. This cannot be undone.`}
+          confirmLabel="Delete permanently"
+          tone="danger"
+          isLoading={deleteMutation.isPending}
+          onConfirm={() => deleteMutation.mutate(deleteTarget)}
+          onCancel={() => setDeleteTarget(null)}
         />
       )}
 

@@ -40,6 +40,19 @@ apiClient.interceptors.response.use(
   },
 );
 
+/**
+ * Pulls the message out of a Nest error body so a rejected save can say *why*
+ * ("That phone already belongs to another account") instead of "Action failed".
+ * A validation failure arrives as an array of messages; only the first is shown.
+ */
+export function apiErrorMessage(error: unknown, fallback: string): string {
+  const message = axios.isAxiosError(error)
+    ? (error.response?.data as { message?: string | string[] } | undefined)?.message
+    : undefined;
+  if (Array.isArray(message)) return message[0] ?? fallback;
+  return message ?? fallback;
+}
+
 /** Turns a relative upload path like `/uploads/photos/x.webp` into an absolute URL. */
 export function resolveMediaUrl(path: string | null | undefined): string | null {
   if (!path) return null;

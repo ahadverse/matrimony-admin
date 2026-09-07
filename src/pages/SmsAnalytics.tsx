@@ -27,6 +27,13 @@ const COUNT_FORMAT = new Intl.NumberFormat('en-US');
 const STATUS_TONE: Record<SmsLogStatus, BadgeTone> = {
   success: 'success',
   failed: 'danger',
+  skipped: 'neutral',
+};
+
+const STATUS_LABEL: Record<SmsLogStatus, string> = {
+  success: 'Delivered',
+  failed: 'Failed',
+  skipped: 'Not sent',
 };
 
 const PURPOSE_LABEL: Record<string, string> = {
@@ -232,6 +239,7 @@ export function SmsAnalytics() {
             <option value="all">All statuses</option>
             <option value="success">Delivered</option>
             <option value="failed">Failed</option>
+            <option value="skipped">Not sent</option>
           </select>
           <select
             value={purposeFilter}
@@ -310,9 +318,7 @@ export function SmsAnalytics() {
                     <td className="px-4 py-3 text-text-muted">{purposeLabel(log.purpose)}</td>
                     <td className="px-4 py-3 capitalize text-text-muted">{log.provider}</td>
                     <td className="px-4 py-3">
-                      <Badge tone={STATUS_TONE[log.status]}>
-                        {log.status === 'success' ? 'Delivered' : 'Failed'}
-                      </Badge>
+                      <Badge tone={STATUS_TONE[log.status]}>{STATUS_LABEL[log.status]}</Badge>
                     </td>
                     <td className="px-4 py-3 text-text-faint">
                       {log.errorMessage ?? <span className="text-text-faint">—</span>}

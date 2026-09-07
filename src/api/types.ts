@@ -7,6 +7,7 @@ export type TransactionStatus = 'pending' | 'success' | 'failed';
 export type PaymentProvider = 'bkash' | 'nagad';
 export type PaymentVerificationMethod = 'automatic' | 'manual';
 export type VerificationStatus = 'pending' | 'approved' | 'rejected';
+export type MaritalStatus = 'single' | 'divorced' | 'widowed';
 export type AssistantRequestStatus = 'pending' | 'contacted' | 'closed';
 export type AssistantRequestPlan = 'three_months' | 'six_months';
 
@@ -215,7 +216,8 @@ export interface AdminSettings {
   updatedAt: string;
 }
 
-export type SmsLogStatus = 'success' | 'failed';
+/** `skipped` is a message that was never handed to a gateway because `SMS_ENABLED` is off server-side. */
+export type SmsLogStatus = 'success' | 'failed' | 'skipped';
 
 export interface SmsLog {
   id: string;
@@ -288,6 +290,46 @@ export interface AdminUserDetail {
   profile: Profile | null;
   verification: IdentityVerificationRecord | null;
   recentTransactions: WalletTransaction[];
+}
+
+/**
+ * The vocabularies the Users page's dropdowns are built from, read back from
+ * the profiles that exist rather than from a fixed list — members outside
+ * Bangladesh store a state in `district` and a city in `subDistrict`, and
+ * `education` is a free-text column everywhere.
+ */
+export interface AdminUserFilterOptions {
+  districts: string[];
+  /** Narrowed to the requested district when one was passed. */
+  subDistricts: string[];
+  educations: string[];
+}
+
+/** The profile half of an admin edit: every writable profile column, plus the two moderation flags only an admin may set. */
+export type AdminUpdateProfilePayload = Partial<
+  Omit<
+    Profile,
+    | 'id'
+    | 'userId'
+    | 'publicId'
+    | 'photos'
+    | 'user'
+    | 'createdAt'
+    | 'updatedAt'
+    | 'verifiedAt'
+    | 'spotlightUntil'
+  >
+>;
+
+export interface AdminUpdateUserPayload {
+  /** `null` clears the column; omitting the key leaves it untouched. */
+  phone?: string | null;
+  email?: string | null;
+  gender?: Gender | null;
+  dob?: string | null;
+  status?: UserStatus;
+  languagePref?: string;
+  profile?: AdminUpdateProfilePayload;
 }
 
 export interface AdminStats {

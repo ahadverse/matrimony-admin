@@ -2,7 +2,9 @@ import { apiClient } from './client';
 import type {
   AdminSettings,
   AdminStats,
+  AdminUpdateUserPayload,
   AdminUserDetail,
+  AdminUserFilterOptions,
   AdminUserRecord,
   AssistantRequest,
   AssistantRequestStatus,
@@ -10,6 +12,7 @@ import type {
   ContactMessageStatus,
   Gender,
   LoginResponse,
+  MaritalStatus,
   Paginated,
   Profile,
   SmsLog,
@@ -116,6 +119,10 @@ export interface ListUsersParams {
   status?: UserStatus;
   gender?: Gender;
   verified?: boolean;
+  district?: string;
+  subDistrict?: string;
+  maritalStatus?: MaritalStatus;
+  education?: string;
   search?: string;
   sortBy?: string;
   sortOrder?: SortOrder;
@@ -125,8 +132,25 @@ export function getUsers(params: ListUsersParams): Promise<Paginated<AdminUserRe
   return apiClient.get<Paginated<AdminUserRecord>>('/admin/users', { params }).then((r) => r.data);
 }
 
+/** Passing a district narrows `subDistricts` to that district — the two dropdowns are dependent. */
+export function getUserFilterOptions(district?: string): Promise<AdminUserFilterOptions> {
+  return apiClient
+    .get<AdminUserFilterOptions>('/admin/users/filter-options', {
+      params: district ? { district } : undefined,
+    })
+    .then((r) => r.data);
+}
+
 export function getUserDetail(id: string): Promise<AdminUserDetail> {
   return apiClient.get<AdminUserDetail>(`/admin/users/${id}`).then((r) => r.data);
+}
+
+export function updateUser(id: string, payload: AdminUpdateUserPayload): Promise<AdminUserDetail> {
+  return apiClient.patch<AdminUserDetail>(`/admin/users/${id}`, payload).then((r) => r.data);
+}
+
+export function deleteUser(id: string): Promise<void> {
+  return apiClient.delete(`/admin/users/${id}`).then(() => undefined);
 }
 
 export function banUser(id: string): Promise<void> {
@@ -251,6 +275,11 @@ export function sendSupportReply(userId: string, body: string): Promise<SupportM
 
 export function getSettings(): Promise<AdminSettings> {
   return apiClient.get<AdminSettings>('/admin/settings').then((r) => r.data);
+}
+
+/** Whether outbound SMS is switched on server-side (`SMS_ENABLED`) — the compose form greys itself out when it isn't. */
+export function getSmsStatus(): Promise<{ enabled: boolean }> {
+  return apiClient.get<{ enabled: boolean }>('/admin/sms/status').then((r) => r.data);
 }
 
 export function sendSms(payload: { phone: string; message: string }): Promise<{ success: boolean }> {
