@@ -4,19 +4,24 @@ import toast from 'react-hot-toast';
 import clsx from 'clsx';
 import {
   approveVerification,
+  bulkDeleteVerifications,
   exportVerifications,
   getVerificationSubmissions,
   rejectVerification,
 } from '../api/admin';
-import { resolveMediaUrl } from '../api/client';
+import { apiErrorMessage, resolveMediaUrl } from '../api/client';
 import type { SortOrder, VerificationStatus, VerificationSubmission } from '../api/types';
 import { Badge } from '../components/Badge';
+import { BulkActionBar } from '../components/BulkActionBar';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Pagination } from '../components/Pagination';
 import { Modal } from '../components/Modal';
 import { SearchInput } from '../components/SearchInput';
+import { SelectCheckbox } from '../components/SelectCheckbox';
 import { DownloadIcon, SpinnerIcon } from '../components/icons';
-
-const PAGE_SIZE = 10;
+import { usePageSize } from '../hooks/usePageSize';
+import { useRowSelection } from '../hooks/useRowSelection';
+import { reportBulkDelete } from '../lib/bulkDelete';
 
 type StatusFilter = 'all' | VerificationStatus;
 type SortChoice = 'createdAt_ASC' | 'createdAt_DESC' | 'reviewedAt_DESC';
@@ -36,22 +41,24 @@ const SORT_OPTIONS: { value: SortChoice; label: string }[] = [
 
 export function Verification() {
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize('verifications');
   const [filter, setFilter] = useState<StatusFilter>('pending');
   const [search, setSearch] = useState('');
   const [sortChoice, setSortChoice] = useState<SortChoice>('createdAt_ASC');
   const [rejectTarget, setRejectTarget] = useState<VerificationSubmission | null>(null);
   const [viewTarget, setViewTarget] = useState<VerificationSubmission | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const queryClient = useQueryClient();
 
   const statusParam = filter === 'all' ? undefined : filter;
   const [sortBy, sortOrder] = sortChoice.split('_') as [string, SortOrder];
 
   const query = useQuery({
-    queryKey: ['admin', 'verifications', page, filter, search, sortChoice],
+    queryKey: ['admin', 'verifications', page, pageSize, filter, search, sortChoice],
     queryFn: () =>
       getVerificationSubmissions({
         page,
-        pageSize: PAGE_SIZE,
+        pageSize,
         status: statusParam,
         search: search || undefined,
         sortBy,
@@ -96,6 +103,21 @@ export function Verification() {
     },
   });
 
+  const submissions = query.data?.items ?? [];
+  const selection = useRowSelection(submissions.map((s) => s.id));
+
+  const deleteMutation = useMutation({
+    mutationFn: () => bulkDeleteVerifications(selection.selectedIds),
+    onSuccess: (result) => {
+      reportBulkDelete(result, 'submission');
+      setConfirmingDelete(false);
+      selection.clear();
+      invalidate();
+    },
+    onError: (error) =>
+      toast.error(apiErrorMessage(error, 'Could not delete the selected submissions')),
+  });
+
   function handleFilterChange(value: StatusFilter) {
     setFilter(value);
     setPage(1);
@@ -105,8 +127,6 @@ export function Verification() {
     setSearch(value);
     setPage(1);
   }
-
-  const submissions = query.data?.items ?? [];
 
   return (
     <div>
@@ -188,27 +208,76 @@ export function Verification() {
           <p className="mt-1 text-sm text-text-faint">No submissions match this filter.</p>
         </div>
       ) : (
-        <div
-          className={clsx(
-            'space-y-3 transition-opacity',
-            query.isFetching && !query.isLoading && 'opacity-60',
-          )}
-        >
-          {submissions.map((submission) => (
-            <SubmissionCard
-              key={submission.id}
-              submission={submission}
-              isApproving={approveMutation.isPending && approveMutation.variables === submission.id}
-              onApprove={() => approveMutation.mutate(submission.id)}
-              onReject={() => setRejectTarget(submission)}
-              onView={() => setViewTarget(submission)}
+        <>
+          <BulkActionBar
+            count={selection.count}
+            noun="submission"
+            allSelected={selection.allSelected}
+            someSelected={selection.someSelected}
+            onToggleAll={selection.toggleAll}
+            onClear={selection.clear}
+            onDelete={() => setConfirmingDelete(true)}
+            isDeleting={deleteMutation.isPending}
+          />
+
+          <label className="mb-2 flex w-fit cursor-pointer items-center gap-2 px-1 text-sm text-text-faint">
+            <SelectCheckbox
+              checked={selection.allSelected}
+              indeterminate={selection.someSelected}
+              onChange={selection.toggleAll}
+              label="Select all submissions on this page"
             />
-          ))}
-        </div>
+            Select all on this page
+          </label>
+
+          <div
+            className={clsx(
+              'space-y-3 transition-opacity',
+              query.isFetching && !query.isLoading && 'opacity-60',
+            )}
+          >
+            {submissions.map((submission) => (
+              <SubmissionCard
+                key={submission.id}
+                submission={submission}
+                selected={selection.isSelected(submission.id)}
+                onToggleSelected={() => selection.toggle(submission.id)}
+                isApproving={approveMutation.isPending && approveMutation.variables === submission.id}
+                onApprove={() => approveMutation.mutate(submission.id)}
+                onReject={() => setRejectTarget(submission)}
+                onView={() => setViewTarget(submission)}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {query.data && query.data.total > 0 && (
-        <Pagination page={page} pageSize={PAGE_SIZE} total={query.data.total} onPageChange={setPage} />
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={query.data.total}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+          idPrefix="verifications"
+        />
+      )}
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title={`Delete ${selection.count} submission${selection.count === 1 ? '' : 's'}`}
+          message={`Permanently delete the ${selection.count} selected KYC submission${
+            selection.count === 1 ? '' : 's'
+          }? The NID number and the submitted selfie are erased, including the stored image. Members already approved keep their verified badge, but the evidence behind it is gone and cannot be re-exported. This cannot be undone.`}
+          confirmLabel="Delete permanently"
+          tone="danger"
+          isLoading={deleteMutation.isPending}
+          onConfirm={() => deleteMutation.mutate()}
+          onCancel={() => setConfirmingDelete(false)}
+        />
       )}
 
       {rejectTarget && (
@@ -241,12 +310,16 @@ export function Verification() {
 
 function SubmissionCard({
   submission,
+  selected,
+  onToggleSelected,
   isApproving,
   onApprove,
   onReject,
   onView,
 }: {
   submission: VerificationSubmission;
+  selected: boolean;
+  onToggleSelected: () => void;
   isApproving: boolean;
   onApprove: () => void;
   onReject: () => void;
@@ -256,7 +329,18 @@ function SubmissionCard({
   const statusTone = submission.status === 'approved' ? 'success' : submission.status === 'rejected' ? 'danger' : 'gold';
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 sm:flex-row sm:items-center">
+    <div
+      className={clsx(
+        'flex flex-col gap-4 rounded-xl border bg-surface p-4 sm:flex-row sm:items-center',
+        selected ? 'border-primary/50 ring-1 ring-primary/30' : 'border-border',
+      )}
+    >
+      <SelectCheckbox
+        checked={selected}
+        onChange={onToggleSelected}
+        label={`Select submission from ${submission.user?.name ?? submission.nidNumber}`}
+      />
+
       <button
         type="button"
         onClick={onView}

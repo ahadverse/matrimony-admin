@@ -2,15 +2,24 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
-import { getAssistantRequests, updateAssistantRequestStatus } from '../api/admin';
+import {
+  bulkDeleteAssistantRequests,
+  getAssistantRequests,
+  updateAssistantRequestStatus,
+} from '../api/admin';
+import { apiErrorMessage } from '../api/client';
 import type { AssistantRequest, AssistantRequestPlan, AssistantRequestStatus } from '../api/types';
 import { Badge } from '../components/Badge';
 import type { BadgeTone } from '../components/Badge';
+import { BulkActionBar } from '../components/BulkActionBar';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Pagination } from '../components/Pagination';
 import { SearchInput } from '../components/SearchInput';
+import { SelectCheckbox } from '../components/SelectCheckbox';
 import { SpinnerIcon } from '../components/icons';
-
-const PAGE_SIZE = 10;
+import { usePageSize } from '../hooks/usePageSize';
+import { useRowSelection } from '../hooks/useRowSelection';
+import { reportBulkDelete } from '../lib/bulkDelete';
 
 type StatusFilter = 'all' | AssistantRequestStatus;
 
@@ -34,18 +43,20 @@ const PLAN_LABELS: Record<AssistantRequestPlan, string> = {
 
 export function AssistantRequests() {
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize('assistant-requests');
   const [filter, setFilter] = useState<StatusFilter>('pending');
   const [search, setSearch] = useState('');
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const queryClient = useQueryClient();
 
   const statusParam = filter === 'all' ? undefined : filter;
 
   const query = useQuery({
-    queryKey: ['admin', 'assistant-requests', page, filter, search],
+    queryKey: ['admin', 'assistant-requests', page, pageSize, filter, search],
     queryFn: () =>
       getAssistantRequests({
         page,
-        pageSize: PAGE_SIZE,
+        pageSize,
         status: statusParam,
         search: search || undefined,
       }),
@@ -62,6 +73,21 @@ export function AssistantRequests() {
     onError: () => toast.error('Failed to update request'),
   });
 
+  const requests = query.data?.items ?? [];
+  const selection = useRowSelection(requests.map((r) => r.id));
+
+  const deleteMutation = useMutation({
+    mutationFn: () => bulkDeleteAssistantRequests(selection.selectedIds),
+    onSuccess: (result) => {
+      reportBulkDelete(result, 'request');
+      setConfirmingDelete(false);
+      selection.clear();
+      queryClient.invalidateQueries({ queryKey: ['admin', 'assistant-requests'] });
+    },
+    onError: (error) =>
+      toast.error(apiErrorMessage(error, 'Could not delete the selected requests')),
+  });
+
   function handleFilterChange(value: StatusFilter) {
     setFilter(value);
     setPage(1);
@@ -71,8 +97,6 @@ export function AssistantRequests() {
     setSearch(value);
     setPage(1);
   }
-
-  const requests = query.data?.items ?? [];
 
   return (
     <div>
@@ -129,25 +153,74 @@ export function AssistantRequests() {
           <p className="mt-1 text-sm text-text-faint">No requests match this filter.</p>
         </div>
       ) : (
-        <div
-          className={clsx(
-            'space-y-3 transition-opacity',
-            query.isFetching && !query.isLoading && 'opacity-60',
-          )}
-        >
-          {requests.map((request) => (
-            <RequestCard
-              key={request.id}
-              request={request}
-              isUpdating={statusMutation.isPending && statusMutation.variables?.id === request.id}
-              onSetStatus={(status) => statusMutation.mutate({ id: request.id, status })}
+        <>
+          <BulkActionBar
+            count={selection.count}
+            noun="request"
+            allSelected={selection.allSelected}
+            someSelected={selection.someSelected}
+            onToggleAll={selection.toggleAll}
+            onClear={selection.clear}
+            onDelete={() => setConfirmingDelete(true)}
+            isDeleting={deleteMutation.isPending}
+          />
+
+          <label className="mb-2 flex w-fit cursor-pointer items-center gap-2 px-1 text-sm text-text-faint">
+            <SelectCheckbox
+              checked={selection.allSelected}
+              indeterminate={selection.someSelected}
+              onChange={selection.toggleAll}
+              label="Select all requests on this page"
             />
-          ))}
-        </div>
+            Select all on this page
+          </label>
+
+          <div
+            className={clsx(
+              'space-y-3 transition-opacity',
+              query.isFetching && !query.isLoading && 'opacity-60',
+            )}
+          >
+            {requests.map((request) => (
+              <RequestCard
+                key={request.id}
+                request={request}
+                selected={selection.isSelected(request.id)}
+                onToggleSelected={() => selection.toggle(request.id)}
+                isUpdating={statusMutation.isPending && statusMutation.variables?.id === request.id}
+                onSetStatus={(status) => statusMutation.mutate({ id: request.id, status })}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {query.data && query.data.total > 0 && (
-        <Pagination page={page} pageSize={PAGE_SIZE} total={query.data.total} onPageChange={setPage} />
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={query.data.total}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+          idPrefix="assistant-requests"
+        />
+      )}
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title={`Delete ${selection.count} request${selection.count === 1 ? '' : 's'}`}
+          message={`Permanently delete the ${selection.count} selected request${
+            selection.count === 1 ? '' : 's'
+          }? These are sales leads — the contact details and the plan they asked about are removed for good. This cannot be undone.`}
+          confirmLabel="Delete permanently"
+          tone="danger"
+          isLoading={deleteMutation.isPending}
+          onConfirm={() => deleteMutation.mutate()}
+          onCancel={() => setConfirmingDelete(false)}
+        />
       )}
     </div>
   );
@@ -155,15 +228,30 @@ export function AssistantRequests() {
 
 function RequestCard({
   request,
+  selected,
+  onToggleSelected,
   isUpdating,
   onSetStatus,
 }: {
   request: AssistantRequest;
+  selected: boolean;
+  onToggleSelected: () => void;
   isUpdating: boolean;
   onSetStatus: (status: AssistantRequestStatus) => void;
 }) {
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 sm:flex-row sm:items-center">
+    <div
+      className={clsx(
+        'flex flex-col gap-4 rounded-xl border bg-surface p-4 sm:flex-row sm:items-center',
+        selected ? 'border-primary/50 ring-1 ring-primary/30' : 'border-border',
+      )}
+    >
+      <SelectCheckbox
+        checked={selected}
+        onChange={onToggleSelected}
+        label={`Select request from ${request.name}`}
+      />
+
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2">
           <h3 className="min-w-0 break-words text-base font-semibold text-text">{request.name}</h3>

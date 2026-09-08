@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import clsx from 'clsx';
 import {
   Bar,
@@ -11,17 +12,23 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getSmsLogs, getSmsStats } from '../api/admin';
+import { bulkDeleteSmsLogs, getSmsLogs, getSmsStats } from '../api/admin';
+import { apiErrorMessage } from '../api/client';
 import { Badge } from '../components/Badge';
+import { BulkActionBar } from '../components/BulkActionBar';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Pagination } from '../components/Pagination';
 import { SearchInput } from '../components/SearchInput';
+import { SelectCheckbox } from '../components/SelectCheckbox';
 import { SortableTh } from '../components/SortableTh';
 import { StatCard } from '../components/StatCard';
 import { SpinnerIcon } from '../components/icons';
+import { usePageSize } from '../hooks/usePageSize';
+import { useRowSelection } from '../hooks/useRowSelection';
+import { reportBulkDelete } from '../lib/bulkDelete';
 import type { BadgeTone } from '../components/Badge';
 import type { SmsLogStatus, SortOrder } from '../api/types';
 
-const PAGE_SIZE = 20;
 const COUNT_FORMAT = new Intl.NumberFormat('en-US');
 
 const STATUS_TONE: Record<SmsLogStatus, BadgeTone> = {
@@ -60,18 +67,32 @@ export function SmsAnalytics() {
   });
 
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize('sms-logs');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [purposeFilter, setPurposeFilter] = useState('all');
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState<SortOrder>('DESC');
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const queryClient = useQueryClient();
 
   const logsQuery = useQuery({
-    queryKey: ['admin', 'sms', 'logs', page, search, statusFilter, purposeFilter, sortBy, sortOrder],
+    queryKey: [
+      'admin',
+      'sms',
+      'logs',
+      page,
+      pageSize,
+      search,
+      statusFilter,
+      purposeFilter,
+      sortBy,
+      sortOrder,
+    ],
     queryFn: () =>
       getSmsLogs({
         page,
-        pageSize: PAGE_SIZE,
+        pageSize,
         status: statusFilter === 'all' ? undefined : statusFilter,
         purpose: purposeFilter === 'all' ? undefined : purposeFilter,
         search: search || undefined,
@@ -107,6 +128,19 @@ export function SmsAnalytics() {
 
   const maxPurposeCount = Math.max(1, ...(stats?.byPurpose.map((p) => p.count) ?? [1]));
   const logs = logsQuery.data?.items ?? [];
+  const selection = useRowSelection(logs.map((log) => log.id));
+
+  const deleteMutation = useMutation({
+    mutationFn: () => bulkDeleteSmsLogs(selection.selectedIds),
+    onSuccess: (result) => {
+      reportBulkDelete(result, 'log entry');
+      setConfirmingDelete(false);
+      selection.clear();
+      queryClient.invalidateQueries({ queryKey: ['admin', 'sms'] });
+    },
+    onError: (error) =>
+      toast.error(apiErrorMessage(error, 'Could not delete the selected log entries')),
+  });
 
   return (
     <div>
@@ -269,15 +303,34 @@ export function SmsAnalytics() {
           </p>
         )}
 
+        <BulkActionBar
+          count={selection.count}
+          noun="log entry"
+          allSelected={selection.allSelected}
+          someSelected={selection.someSelected}
+          onToggleAll={selection.toggleAll}
+          onClear={selection.clear}
+          onDelete={() => setConfirmingDelete(true)}
+          isDeleting={deleteMutation.isPending}
+        />
+
         <div
           className={clsx(
             'overflow-x-auto rounded-xl border border-border bg-surface transition-opacity',
             logsQuery.isFetching && !logsQuery.isLoading && 'opacity-60',
           )}
         >
-          <table className="w-full min-w-[860px] text-left text-sm">
+          <table className="w-full min-w-[910px] text-left text-sm">
             <thead>
               <tr className="border-b border-border text-xs uppercase tracking-wide text-text-faint">
+                <th className="w-10 px-4 py-3">
+                  <SelectCheckbox
+                    checked={selection.allSelected}
+                    indeterminate={selection.someSelected}
+                    onChange={selection.toggleAll}
+                    label="Select all log entries on this page"
+                  />
+                </th>
                 <SortableTh
                   label="Phone"
                   sortKey="phone"
@@ -301,19 +354,32 @@ export function SmsAnalytics() {
             <tbody>
               {logsQuery.isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-text-faint">
+                  <td colSpan={7} className="px-4 py-10 text-center text-text-faint">
                     Loading SMS logs…
                   </td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-text-faint">
+                  <td colSpan={7} className="px-4 py-10 text-center text-text-faint">
                     No SMS logs match these filters.
                   </td>
                 </tr>
               ) : (
                 logs.map((log) => (
-                  <tr key={log.id} className="border-b border-border last:border-0">
+                  <tr
+                    key={log.id}
+                    className={clsx(
+                      'border-b border-border last:border-0',
+                      selection.isSelected(log.id) && 'bg-primary/5',
+                    )}
+                  >
+                    <td className="px-4 py-3">
+                      <SelectCheckbox
+                        checked={selection.isSelected(log.id)}
+                        onChange={() => selection.toggle(log.id)}
+                        label={`Select log entry for ${log.phone}`}
+                      />
+                    </td>
                     <td className="px-4 py-3 font-medium text-text">{log.phone}</td>
                     <td className="px-4 py-3 text-text-muted">{purposeLabel(log.purpose)}</td>
                     <td className="px-4 py-3 capitalize text-text-muted">{log.provider}</td>
@@ -340,11 +406,35 @@ export function SmsAnalytics() {
 
           {logsQuery.data && logsQuery.data.total > 0 && (
             <div className="px-4">
-              <Pagination page={page} pageSize={PAGE_SIZE} total={logsQuery.data.total} onPageChange={setPage} />
+              <Pagination
+                page={page}
+                pageSize={pageSize}
+                total={logsQuery.data.total}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                  setPageSize(size);
+                  setPage(1);
+                }}
+                idPrefix="sms-logs"
+              />
             </div>
           )}
         </div>
       </section>
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title={`Delete ${selection.count} log ${selection.count === 1 ? 'entry' : 'entries'}`}
+          message={`Permanently delete the ${selection.count} selected log ${
+            selection.count === 1 ? 'entry' : 'entries'
+          }? These are the delivery records for OTP and manual messages — the totals and charts above are recalculated from what remains, so past figures will change. This cannot be undone.`}
+          confirmLabel="Delete permanently"
+          tone="danger"
+          isLoading={deleteMutation.isPending}
+          onConfirm={() => deleteMutation.mutate()}
+          onCancel={() => setConfirmingDelete(false)}
+        />
+      )}
     </div>
   );
 }

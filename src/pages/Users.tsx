@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import {
   adjustWallet,
   banUser,
+  bulkDeleteUsers,
   deleteUser,
   getUserFilterOptions,
   getUsers,
@@ -20,18 +21,22 @@ import type {
   UserStatus,
 } from '../api/types';
 import { Badge } from '../components/Badge';
+import { BulkActionBar } from '../components/BulkActionBar';
 import { Pagination } from '../components/Pagination';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Modal } from '../components/Modal';
 import { SearchInput } from '../components/SearchInput';
+import { SelectCheckbox } from '../components/SelectCheckbox';
 import { SortableTh } from '../components/SortableTh';
 import { UserDetailModal } from '../components/UserDetailModal';
 import { UserEditModal } from '../components/UserEditModal';
 import { SpinnerIcon } from '../components/icons';
+import { usePageSize } from '../hooks/usePageSize';
+import { useRowSelection } from '../hooks/useRowSelection';
+import { reportBulkDelete } from '../lib/bulkDelete';
 import { MARITAL_STATUSES } from '../lib/profileOptions';
 import { humanize } from '../components/ProfileDetails';
 
-const PAGE_SIZE = 15;
 const TAKA = new Intl.NumberFormat('en-BD');
 
 type StatusFilter = 'all' | UserStatus;
@@ -50,6 +55,7 @@ const SELECT_CLASS =
 
 export function Users() {
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize('users');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [genderFilter, setGenderFilter] = useState<GenderFilter>('all');
   const [verifiedFilter, setVerifiedFilter] = useState<VerifiedFilter>('all');
@@ -65,6 +71,7 @@ export function Users() {
   const [walletTarget, setWalletTarget] = useState<UserRef | null>(null);
   const [detailUserId, setDetailUserId] = useState<string | null>(null);
   const [editUserId, setEditUserId] = useState<string | null>(null);
+  const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -72,6 +79,7 @@ export function Users() {
       'admin',
       'users',
       page,
+      pageSize,
       statusFilter,
       genderFilter,
       verifiedFilter,
@@ -86,7 +94,7 @@ export function Users() {
     queryFn: () =>
       getUsers({
         page,
-        pageSize: PAGE_SIZE,
+        pageSize,
         status: statusFilter === 'all' ? undefined : statusFilter,
         gender: genderFilter === 'all' ? undefined : genderFilter,
         verified: verifiedFilter === 'all' ? undefined : verifiedFilter === 'true',
@@ -165,9 +173,27 @@ export function Users() {
   }
 
   const users = query.data?.items ?? [];
+  const selection = useRowSelection(users.map((user) => user.id));
   const hasProfileFilters = Boolean(
     districtFilter || subDistrictFilter || maritalFilter || educationFilter,
   );
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () => bulkDeleteUsers(selection.selectedIds),
+    onSuccess: (result) => {
+      // Admin accounts are refused server-side, so a selection that swept one up
+      // comes back as a partial result rather than an error.
+      reportBulkDelete(result, 'user');
+      setConfirmingBulkDelete(false);
+      selection.clear();
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user-filter-options'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
+    },
+    onError: (error) =>
+      toast.error(apiErrorMessage(error, 'Could not delete the selected users')),
+  });
 
   return (
     <div>
@@ -321,15 +347,34 @@ export function Users() {
         </p>
       )}
 
+      <BulkActionBar
+        count={selection.count}
+        noun="user"
+        allSelected={selection.allSelected}
+        someSelected={selection.someSelected}
+        onToggleAll={selection.toggleAll}
+        onClear={selection.clear}
+        onDelete={() => setConfirmingBulkDelete(true)}
+        isDeleting={bulkDeleteMutation.isPending}
+      />
+
       <div
         className={clsx(
           'overflow-x-auto rounded-xl border border-border bg-surface transition-opacity',
           query.isFetching && !query.isLoading && 'opacity-60',
         )}
       >
-        <table className="w-full min-w-[1120px] text-left text-sm">
+        <table className="w-full min-w-[1170px] text-left text-sm">
           <thead>
             <tr className="border-b border-border text-xs uppercase tracking-wide text-text-faint">
+              <th className="w-10 px-4 py-3">
+                <SelectCheckbox
+                  checked={selection.allSelected}
+                  indeterminate={selection.someSelected}
+                  onChange={selection.toggleAll}
+                  label="Select all users on this page"
+                />
+              </th>
               <SortableTh label="Phone" sortKey="phone" activeSortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
               <SortableTh label="Profile" sortKey="name" activeSortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
               <th className="px-4 py-3 font-medium">District</th>
@@ -346,19 +391,32 @@ export function Users() {
           <tbody>
             {query.isLoading ? (
               <tr>
-                <td colSpan={11} className="px-4 py-10 text-center text-text-faint">
+                <td colSpan={12} className="px-4 py-10 text-center text-text-faint">
                   Loading users…
                 </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={11} className="px-4 py-10 text-center text-text-faint">
+                <td colSpan={12} className="px-4 py-10 text-center text-text-faint">
                   No users match this filter.
                 </td>
               </tr>
             ) : (
               users.map((user) => (
-                <tr key={user.id} className="border-b border-border last:border-0">
+                <tr
+                  key={user.id}
+                  className={clsx(
+                    'border-b border-border last:border-0',
+                    selection.isSelected(user.id) && 'bg-primary/5',
+                  )}
+                >
+                  <td className="px-4 py-3">
+                    <SelectCheckbox
+                      checked={selection.isSelected(user.id)}
+                      onChange={() => selection.toggle(user.id)}
+                      label={`Select user ${user.phone}`}
+                    />
+                  </td>
                   <td className="px-4 py-3 font-medium text-text">
                     <button
                       type="button"
@@ -459,13 +517,32 @@ export function Users() {
           <div className="px-4">
             <Pagination
               page={page}
-              pageSize={PAGE_SIZE}
+              pageSize={pageSize}
               total={query.data.total}
               onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
+              idPrefix="users"
             />
           </div>
         )}
       </div>
+
+      {confirmingBulkDelete && (
+        <ConfirmDialog
+          title={`Delete ${selection.count} user${selection.count === 1 ? '' : 's'}`}
+          message={`Permanently delete the ${selection.count} selected account${
+            selection.count === 1 ? '' : 's'
+          }? For each one, the profile, photos, chats, matches, swipes, shortlists, verification and transaction history are all removed. Admin accounts in the selection are skipped. This cannot be undone.`}
+          confirmLabel={`Delete ${selection.count} permanently`}
+          tone="danger"
+          isLoading={bulkDeleteMutation.isPending}
+          onConfirm={() => bulkDeleteMutation.mutate()}
+          onCancel={() => setConfirmingBulkDelete(false)}
+        />
+      )}
 
       {detailUserId && (
         <UserDetailModal

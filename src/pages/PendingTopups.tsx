@@ -2,22 +2,34 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
-import { approveManualTopup, getPendingManualTopups, rejectManualTopup } from '../api/admin';
+import {
+  approveManualTopup,
+  bulkDeleteTransactions,
+  getPendingManualTopups,
+  rejectManualTopup,
+} from '../api/admin';
+import { apiErrorMessage } from '../api/client';
 import type { WalletTransaction } from '../api/types';
+import { BulkActionBar } from '../components/BulkActionBar';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Pagination } from '../components/Pagination';
 import { Modal } from '../components/Modal';
+import { SelectCheckbox } from '../components/SelectCheckbox';
 import { SpinnerIcon } from '../components/icons';
-
-const PAGE_SIZE = 10;
+import { usePageSize } from '../hooks/usePageSize';
+import { useRowSelection } from '../hooks/useRowSelection';
+import { reportBulkDelete } from '../lib/bulkDelete';
 
 export function PendingTopups() {
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize('pending-topups');
   const [rejectTarget, setRejectTarget] = useState<WalletTransaction | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['admin', 'transactions', 'pending-bkash', page],
-    queryFn: () => getPendingManualTopups(page, PAGE_SIZE),
+    queryKey: ['admin', 'transactions', 'pending-bkash', page, pageSize],
+    queryFn: () => getPendingManualTopups(page, pageSize),
     placeholderData: (prev) => prev,
   });
 
@@ -47,6 +59,19 @@ export function PendingTopups() {
   });
 
   const items = query.data?.items ?? [];
+  const selection = useRowSelection(items.map((tx) => tx.id));
+
+  const deleteMutation = useMutation({
+    mutationFn: () => bulkDeleteTransactions(selection.selectedIds),
+    onSuccess: (result) => {
+      reportBulkDelete(result, 'top-up');
+      setConfirmingDelete(false);
+      selection.clear();
+      invalidate();
+    },
+    onError: (error) =>
+      toast.error(apiErrorMessage(error, 'Could not delete the selected top-ups')),
+  });
 
   return (
     <div>
@@ -78,26 +103,75 @@ export function PendingTopups() {
           <p className="mt-1 text-sm text-text-faint">No manual bKash top-ups awaiting review.</p>
         </div>
       ) : (
-        <div
-          className={clsx(
-            'space-y-3 transition-opacity',
-            query.isFetching && !query.isLoading && 'opacity-60',
-          )}
-        >
-          {items.map((tx) => (
-            <TopupCard
-              key={tx.id}
-              tx={tx}
-              isApproving={approveMutation.isPending && approveMutation.variables === tx.id}
-              onApprove={() => approveMutation.mutate(tx.id)}
-              onReject={() => setRejectTarget(tx)}
+        <>
+          <BulkActionBar
+            count={selection.count}
+            noun="top-up"
+            allSelected={selection.allSelected}
+            someSelected={selection.someSelected}
+            onToggleAll={selection.toggleAll}
+            onClear={selection.clear}
+            onDelete={() => setConfirmingDelete(true)}
+            isDeleting={deleteMutation.isPending}
+          />
+
+          <label className="mb-2 flex w-fit cursor-pointer items-center gap-2 px-1 text-sm text-text-faint">
+            <SelectCheckbox
+              checked={selection.allSelected}
+              indeterminate={selection.someSelected}
+              onChange={selection.toggleAll}
+              label="Select all top-ups on this page"
             />
-          ))}
-        </div>
+            Select all on this page
+          </label>
+
+          <div
+            className={clsx(
+              'space-y-3 transition-opacity',
+              query.isFetching && !query.isLoading && 'opacity-60',
+            )}
+          >
+            {items.map((tx) => (
+              <TopupCard
+                key={tx.id}
+                tx={tx}
+                selected={selection.isSelected(tx.id)}
+                onToggleSelected={() => selection.toggle(tx.id)}
+                isApproving={approveMutation.isPending && approveMutation.variables === tx.id}
+                onApprove={() => approveMutation.mutate(tx.id)}
+                onReject={() => setRejectTarget(tx)}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {query.data && query.data.total > 0 && (
-        <Pagination page={page} pageSize={PAGE_SIZE} total={query.data.total} onPageChange={setPage} />
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={query.data.total}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+          idPrefix="pending-topups"
+        />
+      )}
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title={`Delete ${selection.count} top-up request${selection.count === 1 ? '' : 's'}`}
+          message={`Permanently delete the ${selection.count} selected request${
+            selection.count === 1 ? '' : 's'
+          }? These are still awaiting review, so no wallet has been credited and no balance changes. The member is not told — if they really did pay, rejecting with a reason is the better route, because deleting simply makes their request vanish. This cannot be undone.`}
+          confirmLabel="Delete permanently"
+          tone="danger"
+          isLoading={deleteMutation.isPending}
+          onConfirm={() => deleteMutation.mutate()}
+          onCancel={() => setConfirmingDelete(false)}
+        />
       )}
 
       {rejectTarget && (
@@ -114,17 +188,32 @@ export function PendingTopups() {
 
 function TopupCard({
   tx,
+  selected,
+  onToggleSelected,
   isApproving,
   onApprove,
   onReject,
 }: {
   tx: WalletTransaction;
+  selected: boolean;
+  onToggleSelected: () => void;
   isApproving: boolean;
   onApprove: () => void;
   onReject: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 sm:flex-row sm:items-center">
+    <div
+      className={clsx(
+        'flex flex-col gap-4 rounded-xl border bg-surface p-4 sm:flex-row sm:items-center',
+        selected ? 'border-primary/50 ring-1 ring-primary/30' : 'border-border',
+      )}
+    >
+      <SelectCheckbox
+        checked={selected}
+        onChange={onToggleSelected}
+        label={`Select ৳${tx.amount} top-up from ${tx.user?.name ?? tx.user?.phone ?? 'unknown user'}`}
+      />
+
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2">
           <h3 className="text-base font-semibold text-text">৳{tx.amount}</h3>

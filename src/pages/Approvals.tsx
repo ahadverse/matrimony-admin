@@ -2,13 +2,21 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
-import { approveProfile, getPendingProfiles, rejectProfile } from '../api/admin';
-import { resolveMediaUrl } from '../api/client';
+import {
+  approveProfile,
+  bulkDeleteProfiles,
+  getPendingProfiles,
+  rejectProfile,
+} from '../api/admin';
+import { apiErrorMessage, resolveMediaUrl } from '../api/client';
 import type { Gender, Profile, SortOrder } from '../api/types';
 import { Badge } from '../components/Badge';
+import { BulkActionBar } from '../components/BulkActionBar';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Pagination } from '../components/Pagination';
 import { Modal } from '../components/Modal';
 import { SearchInput } from '../components/SearchInput';
+import { SelectCheckbox } from '../components/SelectCheckbox';
 import { UserDetailModal } from '../components/UserDetailModal';
 import { EmailChannel, PhoneChannel } from '../components/ContactActions';
 import {
@@ -23,8 +31,9 @@ import {
   humanize,
 } from '../components/ProfileDetails';
 import { ChevronDownIcon, SpinnerIcon } from '../components/icons';
-
-const PAGE_SIZE = 10;
+import { usePageSize } from '../hooks/usePageSize';
+import { useRowSelection } from '../hooks/useRowSelection';
+import { reportBulkDelete } from '../lib/bulkDelete';
 
 type GenderFilter = 'all' | Gender;
 type SortChoice = 'createdAt_ASC' | 'createdAt_DESC' | 'name_ASC' | 'name_DESC';
@@ -53,22 +62,24 @@ function formatRelative(value: string | null | undefined): string | null {
 
 export function Approvals() {
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize('approvals');
   const [genderFilter, setGenderFilter] = useState<GenderFilter>('all');
   const [search, setSearch] = useState('');
   const [sortChoice, setSortChoice] = useState<SortChoice>('createdAt_ASC');
   const [rejectTarget, setRejectTarget] = useState<Profile | null>(null);
   const [detailUserId, setDetailUserId] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const queryClient = useQueryClient();
 
   const [sortBy, sortOrder] = sortChoice.split('_') as [string, SortOrder];
 
   const query = useQuery({
-    queryKey: ['admin', 'profiles', 'pending', page, genderFilter, search, sortChoice],
+    queryKey: ['admin', 'profiles', 'pending', page, pageSize, genderFilter, search, sortChoice],
     queryFn: () =>
       getPendingProfiles({
         page,
-        pageSize: PAGE_SIZE,
+        pageSize,
         gender: genderFilter === 'all' ? undefined : genderFilter,
         search: search || undefined,
         sortBy,
@@ -107,7 +118,20 @@ export function Approvals() {
   }
 
   const profiles = query.data?.items ?? [];
+  const selection = useRowSelection(profiles.map((p) => p.id));
   const allExpanded = profiles.length > 0 && profiles.every((p) => expandedIds.includes(p.id));
+
+  const deleteMutation = useMutation({
+    mutationFn: () => bulkDeleteProfiles(selection.selectedIds),
+    onSuccess: (result) => {
+      reportBulkDelete(result, 'profile');
+      setConfirmingDelete(false);
+      selection.clear();
+      invalidateAfterModeration();
+    },
+    onError: (error) =>
+      toast.error(apiErrorMessage(error, 'Could not delete the selected profiles')),
+  });
 
   function toggleExpanded(id: string) {
     setExpandedIds((prev) =>
@@ -191,33 +215,77 @@ export function Approvals() {
           </p>
         </div>
       ) : (
-        <div
-          className={clsx(
-            'space-y-3 transition-opacity',
-            query.isFetching && !query.isLoading && 'opacity-60',
-          )}
-        >
-          {profiles.map((profile) => (
-            <ApprovalCard
-              key={profile.id}
-              profile={profile}
-              expanded={expandedIds.includes(profile.id)}
-              onToggleExpanded={() => toggleExpanded(profile.id)}
-              isApproving={approveMutation.isPending && approveMutation.variables === profile.id}
-              onApprove={() => approveMutation.mutate(profile.id)}
-              onReject={() => setRejectTarget(profile)}
-              onView={() => setDetailUserId(profile.userId)}
+        <>
+          <BulkActionBar
+            count={selection.count}
+            noun="profile"
+            allSelected={selection.allSelected}
+            someSelected={selection.someSelected}
+            onToggleAll={selection.toggleAll}
+            onClear={selection.clear}
+            onDelete={() => setConfirmingDelete(true)}
+            isDeleting={deleteMutation.isPending}
+          />
+
+          <label className="mb-2 flex w-fit cursor-pointer items-center gap-2 px-1 text-sm text-text-faint">
+            <SelectCheckbox
+              checked={selection.allSelected}
+              indeterminate={selection.someSelected}
+              onChange={selection.toggleAll}
+              label="Select all profiles on this page"
             />
-          ))}
-        </div>
+            Select all on this page
+          </label>
+
+          <div
+            className={clsx(
+              'space-y-3 transition-opacity',
+              query.isFetching && !query.isLoading && 'opacity-60',
+            )}
+          >
+            {profiles.map((profile) => (
+              <ApprovalCard
+                key={profile.id}
+                profile={profile}
+                selected={selection.isSelected(profile.id)}
+                onToggleSelected={() => selection.toggle(profile.id)}
+                expanded={expandedIds.includes(profile.id)}
+                onToggleExpanded={() => toggleExpanded(profile.id)}
+                isApproving={approveMutation.isPending && approveMutation.variables === profile.id}
+                onApprove={() => approveMutation.mutate(profile.id)}
+                onReject={() => setRejectTarget(profile)}
+                onView={() => setDetailUserId(profile.userId)}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {query.data && query.data.total > 0 && (
         <Pagination
           page={page}
-          pageSize={PAGE_SIZE}
+          pageSize={pageSize}
           total={query.data.total}
           onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+          idPrefix="approvals"
+        />
+      )}
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title={`Delete ${selection.count} profile${selection.count === 1 ? '' : 's'}`}
+          message={`Permanently delete the ${selection.count} selected profile${
+            selection.count === 1 ? '' : 's'
+          } and their uploaded photos? The member's account and login are kept — only the submitted biodata goes, so they can build a new profile. To close an account entirely, use the Users page. This cannot be undone.`}
+          confirmLabel="Delete permanently"
+          tone="danger"
+          isLoading={deleteMutation.isPending}
+          onConfirm={() => deleteMutation.mutate()}
+          onCancel={() => setConfirmingDelete(false)}
         />
       )}
 
@@ -239,6 +307,8 @@ export function Approvals() {
 
 function ApprovalCard({
   profile,
+  selected,
+  onToggleSelected,
   expanded,
   onToggleExpanded,
   isApproving,
@@ -247,6 +317,8 @@ function ApprovalCard({
   onView,
 }: {
   profile: Profile;
+  selected: boolean;
+  onToggleSelected: () => void;
   expanded: boolean;
   onToggleExpanded: () => void;
   isApproving: boolean;
@@ -276,8 +348,20 @@ function ApprovalCard({
   ].filter(Boolean);
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
+    <div
+      className={clsx(
+        'rounded-xl border bg-surface p-4',
+        selected ? 'border-primary/50 ring-1 ring-primary/30' : 'border-border',
+      )}
+    >
       <div className="flex flex-col gap-4 sm:flex-row">
+        <SelectCheckbox
+          checked={selected}
+          onChange={onToggleSelected}
+          label={`Select profile ${profile.name}`}
+          className="mt-1"
+        />
+
         <a
           href={photoUrl ?? undefined}
           target="_blank"

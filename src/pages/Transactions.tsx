@@ -1,17 +1,24 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import clsx from 'clsx';
-import { getTransactions } from '../api/admin';
+import { bulkDeleteTransactions, getTransactions } from '../api/admin';
+import { apiErrorMessage } from '../api/client';
 import { Badge } from '../components/Badge';
+import { BulkActionBar } from '../components/BulkActionBar';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Pagination } from '../components/Pagination';
 import { SearchInput } from '../components/SearchInput';
+import { SelectCheckbox } from '../components/SelectCheckbox';
 import { SortableTh } from '../components/SortableTh';
 import { SpinnerIcon } from '../components/icons';
+import { usePageSize } from '../hooks/usePageSize';
+import { useRowSelection } from '../hooks/useRowSelection';
+import { reportBulkDelete } from '../lib/bulkDelete';
 import type { BadgeTone } from '../components/Badge';
 import type { SortOrder, TransactionStatus, TransactionType } from '../api/types';
 
-const PAGE_SIZE = 20;
 const TAKA = new Intl.NumberFormat('en-BD');
 
 const STATUS_TONE: Record<TransactionStatus, BadgeTone> = {
@@ -42,6 +49,7 @@ export function Transactions() {
   const userIdParam = searchParams.get('userId');
 
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = usePageSize('transactions');
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -49,12 +57,15 @@ export function Transactions() {
   const [to, setTo] = useState('');
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState<SortOrder>('DESC');
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: [
       'admin',
       'transactions',
       page,
+      pageSize,
       userIdParam,
       typeFilter,
       statusFilter,
@@ -67,7 +78,7 @@ export function Transactions() {
     queryFn: () =>
       getTransactions({
         page,
-        pageSize: PAGE_SIZE,
+        pageSize,
         userId: userIdParam ?? undefined,
         type: typeFilter === 'all' ? undefined : typeFilter,
         status: statusFilter === 'all' ? undefined : statusFilter,
@@ -103,6 +114,26 @@ export function Transactions() {
   }
 
   const transactions = query.data?.items ?? [];
+  const selection = useRowSelection(transactions.map((tx) => tx.id));
+
+  // How much of the selection actually moved money — quoted in the confirmation
+  // so the warning about balances is concrete rather than theoretical.
+  const settledSelected = transactions.filter(
+    (tx) => selection.isSelected(tx.id) && tx.status === 'success',
+  ).length;
+
+  const deleteMutation = useMutation({
+    mutationFn: () => bulkDeleteTransactions(selection.selectedIds),
+    onSuccess: (result) => {
+      reportBulkDelete(result, 'transaction');
+      setConfirmingDelete(false);
+      selection.clear();
+      queryClient.invalidateQueries({ queryKey: ['admin', 'transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
+    },
+    onError: (error) =>
+      toast.error(apiErrorMessage(error, 'Could not delete the selected transactions')),
+  });
 
   return (
     <div>
@@ -200,15 +231,34 @@ export function Transactions() {
         </p>
       )}
 
+      <BulkActionBar
+        count={selection.count}
+        noun="transaction"
+        allSelected={selection.allSelected}
+        someSelected={selection.someSelected}
+        onToggleAll={selection.toggleAll}
+        onClear={selection.clear}
+        onDelete={() => setConfirmingDelete(true)}
+        isDeleting={deleteMutation.isPending}
+      />
+
       <div
         className={clsx(
           'overflow-x-auto rounded-xl border border-border bg-surface transition-opacity',
           query.isFetching && !query.isLoading && 'opacity-60',
         )}
       >
-        <table className="w-full min-w-[980px] text-left text-sm">
+        <table className="w-full min-w-[1030px] text-left text-sm">
           <thead>
             <tr className="border-b border-border text-xs uppercase tracking-wide text-text-faint">
+              <th className="w-10 px-4 py-3">
+                <SelectCheckbox
+                  checked={selection.allSelected}
+                  indeterminate={selection.someSelected}
+                  onChange={selection.toggleAll}
+                  label="Select all transactions on this page"
+                />
+              </th>
               <th className="px-4 py-3 font-medium">User</th>
               <th className="px-4 py-3 font-medium">Type</th>
               <SortableTh
@@ -234,19 +284,32 @@ export function Transactions() {
           <tbody>
             {query.isLoading ? (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-text-faint">
+                <td colSpan={9} className="px-4 py-10 text-center text-text-faint">
                   Loading transactions…
                 </td>
               </tr>
             ) : transactions.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-text-faint">
+                <td colSpan={9} className="px-4 py-10 text-center text-text-faint">
                   No transactions match these filters.
                 </td>
               </tr>
             ) : (
               transactions.map((tx) => (
-                <tr key={tx.id} className="border-b border-border last:border-0">
+                <tr
+                  key={tx.id}
+                  className={clsx(
+                    'border-b border-border last:border-0',
+                    selection.isSelected(tx.id) && 'bg-primary/5',
+                  )}
+                >
+                  <td className="px-4 py-3">
+                    <SelectCheckbox
+                      checked={selection.isSelected(tx.id)}
+                      onChange={() => selection.toggle(tx.id)}
+                      label={`Select transaction ${tx.id}`}
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     {tx.user ? (
                       <>
@@ -306,13 +369,40 @@ export function Transactions() {
           <div className="px-4">
             <Pagination
               page={page}
-              pageSize={PAGE_SIZE}
+              pageSize={pageSize}
               total={query.data.total}
               onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
+              idPrefix="transactions"
             />
           </div>
         )}
       </div>
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title={`Delete ${selection.count} transaction${selection.count === 1 ? '' : 's'}`}
+          message={
+            `Permanently delete the ${selection.count} selected ledger ${
+              selection.count === 1 ? 'entry' : 'entries'
+            }?` +
+            (settledSelected > 0
+              ? ` ${settledSelected} of them ${
+                  settledSelected === 1 ? 'is a settled transaction' : 'are settled transactions'
+                }. Wallet balances are stored separately and are NOT adjusted — deleting these removes the record of how a balance was reached without changing the balance itself.`
+              : '') +
+            ' This cannot be undone.'
+          }
+          confirmLabel="Delete permanently"
+          tone="danger"
+          isLoading={deleteMutation.isPending}
+          onConfirm={() => deleteMutation.mutate()}
+          onCancel={() => setConfirmingDelete(false)}
+        />
+      )}
     </div>
   );
 }

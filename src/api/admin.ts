@@ -27,6 +27,34 @@ import type {
   WalletTransaction,
 } from './types';
 
+/**
+ * What a bulk delete actually did. `deleted` can be lower than `requested`
+ * when a row went away between the page loading and the button being pressed,
+ * or when the server refused one (an admin account, say), so the UI reports
+ * these numbers rather than assuming the whole selection went.
+ */
+export interface BulkDeleteResult {
+  requested: number;
+  deleted: number;
+  skipped: { id: string; reason: string }[];
+}
+
+// POST, not DELETE: the id list goes in the body, and DELETE-with-a-body is
+// unreliable through proxies. Mirrors the admin controller's bulk-delete routes.
+function bulkDelete(path: string, ids: string[]): Promise<BulkDeleteResult> {
+  return apiClient
+    .post<BulkDeleteResult>(`/admin/${path}/bulk-delete`, { ids })
+    .then((r) => r.data);
+}
+
+export const bulkDeleteUsers = (ids: string[]) => bulkDelete('users', ids);
+export const bulkDeleteProfiles = (ids: string[]) => bulkDelete('profiles', ids);
+export const bulkDeleteVerifications = (ids: string[]) => bulkDelete('verifications', ids);
+export const bulkDeleteTransactions = (ids: string[]) => bulkDelete('transactions', ids);
+export const bulkDeleteAssistantRequests = (ids: string[]) => bulkDelete('assistant-requests', ids);
+export const bulkDeleteContactMessages = (ids: string[]) => bulkDelete('contact-messages', ids);
+export const bulkDeleteSmsLogs = (ids: string[]) => bulkDelete('sms/logs', ids);
+
 export function login(phone: string, password: string): Promise<LoginResponse> {
   return apiClient
     .post<LoginResponse>('/auth/login', { identifier: phone, password })
