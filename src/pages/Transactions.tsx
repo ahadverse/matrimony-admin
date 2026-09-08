@@ -33,6 +33,7 @@ const TYPE_LABEL: Record<string, string> = {
   refund: 'Refund',
   admin_adjust: 'Admin adjustment',
   spotlight: 'Spotlight',
+  assistance_service: 'Assistance service',
 };
 
 type TypeFilter = 'all' | TransactionType;
@@ -175,6 +176,7 @@ export function Transactions() {
           <option value="refund">Refund</option>
           <option value="admin_adjust">Admin adjustment</option>
           <option value="spotlight">Spotlight</option>
+          <option value="assistance_service">Assistance service</option>
         </select>
         <select
           value={statusFilter}

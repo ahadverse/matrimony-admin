@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { createUser } from '../api/admin';
+import { addUserPhoto, createUser } from '../api/admin';
 import { apiErrorMessage } from '../api/client';
 import type { AdminCreateUserPayload, Gender, UserStatus } from '../api/types';
 import {
@@ -60,6 +60,15 @@ const PROFILE_SPECS = specsFromSections(PROFILE_SECTIONS);
 
 const SECTIONS: SectionSpec[] = [ACCOUNT_SECTION, ...PROFILE_SECTIONS];
 
+/** Matches `MAX_PHOTOS` in the backend's `ProfilesService` — the avatar counts as one of the six. */
+const MAX_PHOTOS = 6;
+
+function LocalImagePreview({ file, className }: { file: File; className?: string }) {
+  const url = useMemo(() => URL.createObjectURL(file), [file]);
+  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  return <img src={url} alt="" className={className} />;
+}
+
 export function AddUser() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -70,11 +79,49 @@ export function AddUser() {
     buildFormState(PROFILE_SPECS, null, PROFILE_DEFAULTS),
   );
   const [error, setError] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+  const gallerySlots = MAX_PHOTOS - (avatarFile ? 1 : 0);
 
   const mutation = useMutation({
-    mutationFn: (payload: AdminCreateUserPayload) => createUser(payload),
-    onSuccess: (created) => {
-      toast.success(`User created — ${created.profile?.name ?? created.user.email}`);
+    mutationFn: async ({
+      payload,
+      avatar,
+      gallery,
+    }: {
+      payload: AdminCreateUserPayload;
+      avatar: File | null;
+      gallery: File[];
+    }) => {
+      const created = await createUser(payload);
+      const userId = created.user.id;
+      // Uploaded first so it lands as the profile's primary photo — `addPhoto`
+      // marks whichever photo arrives when the profile has none yet as primary.
+      let photoFailures = 0;
+      if (avatar) {
+        try {
+          await addUserPhoto(userId, avatar);
+        } catch {
+          photoFailures += 1;
+        }
+      }
+      for (const file of gallery) {
+        try {
+          await addUserPhoto(userId, file);
+        } catch {
+          photoFailures += 1;
+        }
+      }
+      return { created, photoFailures };
+    },
+    onSuccess: ({ created, photoFailures }) => {
+      if (photoFailures > 0) {
+        toast.error(
+          `User created, but ${photoFailures} photo${photoFailures === 1 ? '' : 's'} failed to upload.`,
+        );
+      } else {
+        toast.success(`User created — ${created.profile?.name ?? created.user.email}`);
+      }
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'user-filter-options'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
@@ -119,14 +166,21 @@ export function AddUser() {
     // requires one to create the row at all, matching the edit form's rule.
     const profileDefaults = buildFormState(PROFILE_SPECS, null, PROFILE_DEFAULTS);
     const profileChanges = diff(PROFILE_SPECS, profileForm, profileDefaults);
-    if (String(profileForm.name).trim()) {
+    const hasName = Boolean(String(profileForm.name).trim());
+    if (hasName) {
       payload.profile = profileChanges;
     } else if (Object.keys(profileChanges).length > 0) {
       setError('A name is required to also create a profile for this user.');
       return;
     }
 
-    mutation.mutate(payload);
+    const wantsPhotos = avatarFile !== null || galleryFiles.length > 0;
+    if (wantsPhotos && !hasName) {
+      setError('A name is required to attach photos to this profile.');
+      return;
+    }
+
+    mutation.mutate({ payload, avatar: avatarFile, gallery: galleryFiles });
   }
 
   return (
@@ -176,6 +230,88 @@ export function AddUser() {
             </section>
           );
         })}
+
+        <section className="border-t border-border pt-4">
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-faint">
+            Photos
+          </h4>
+          <p className="mb-3 text-xs text-text-faint">
+            Optional — up to {MAX_PHOTOS} photos total. The avatar is uploaded first and becomes
+            the primary photo. Requires a name above to attach.
+          </p>
+          <div className="flex flex-wrap items-start gap-4">
+            <div>
+              <span className="mb-1 block text-xs text-text-faint">Avatar</span>
+              {avatarFile ? (
+                <div className="relative h-24 w-24 overflow-hidden rounded-lg bg-surface-raised">
+                  <LocalImagePreview file={avatarFile} className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setAvatarFile(null)}
+                    className="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 py-0.5 text-xs leading-none text-white hover:bg-black/80"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <label className="flex h-24 w-24 cursor-pointer items-center justify-center rounded-lg border border-dashed border-border text-xs text-text-faint hover:border-primary hover:text-primary">
+                  + Add
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      setAvatarFile(file);
+                      // Adding an avatar shrinks the gallery's own budget — trim
+                      // anything already picked that would now overflow the total.
+                      if (file) setGalleryFiles((prev) => prev.slice(0, MAX_PHOTOS - 1));
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+
+            <div className="flex-1">
+              <span className="mb-1 block text-xs text-text-faint">
+                Gallery ({galleryFiles.length}/{gallerySlots})
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {galleryFiles.map((file, i) => (
+                  <div
+                    key={i}
+                    className="relative h-20 w-20 overflow-hidden rounded-lg bg-surface-raised"
+                  >
+                    <LocalImagePreview file={file} className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setGalleryFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 py-0.5 text-xs leading-none text-white hover:bg-black/80"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                {galleryFiles.length < gallerySlots && (
+                  <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-lg border border-dashed border-border text-xs text-text-faint hover:border-primary hover:text-primary">
+                    + Add
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files ?? []);
+                        setGalleryFiles((prev) => [...prev, ...files].slice(0, gallerySlots));
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
 
         <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center">
           <button

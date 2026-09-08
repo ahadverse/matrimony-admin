@@ -41,6 +41,18 @@ const PLAN_LABELS: Record<AssistantRequestPlan, string> = {
   six_months: '6 Months',
 };
 
+const PAYMENT_TONE: Record<'pending' | 'success' | 'failed', BadgeTone> = {
+  pending: 'gold',
+  success: 'success',
+  failed: 'danger',
+};
+
+const PAYMENT_LABEL: Record<'pending' | 'success' | 'failed', string> = {
+  pending: 'Payment pending',
+  success: 'Payment verified',
+  failed: 'Payment failed',
+};
+
 export function AssistantRequests() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = usePageSize('assistant-requests');
@@ -261,8 +273,20 @@ function RequestCard({
           <Badge tone={request.plan ? 'success' : 'neutral'}>
             {request.plan ? PLAN_LABELS[request.plan] : 'No plan'}
           </Badge>
+          {request.payment && (
+            <Badge tone={PAYMENT_TONE[request.payment.status]}>
+              {PAYMENT_LABEL[request.payment.status]}
+            </Badge>
+          )}
         </div>
         <p className="mt-0.5 break-words text-sm text-text-muted">{request.phone} · {request.email}</p>
+        {request.payment && (
+          <p className="mt-0.5 break-words text-xs text-text-faint">
+            ৳{request.payment.amount.toLocaleString('en-US')} via bKash
+            {request.payment.trxId ? ` · TrxID ${request.payment.trxId}` : ''}
+            {request.payment.payerAccountNumber ? ` · from ${request.payment.payerAccountNumber}` : ''}
+          </p>
+        )}
         {request.profileId && (
           <p className="mt-0.5 break-words text-xs text-text-faint">Profile ID: {request.profileId}</p>
         )}

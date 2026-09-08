@@ -15,6 +15,7 @@ import type {
   LoginResponse,
   MaritalStatus,
   Paginated,
+  Photo,
   Profile,
   SmsLog,
   SmsLogStatus,
@@ -192,6 +193,24 @@ export function banUser(id: string): Promise<void> {
 
 export function unbanUser(id: string): Promise<void> {
   return apiClient.post(`/admin/users/${id}/unban`).then(() => undefined);
+}
+
+export function addUserPhoto(id: string, file: File): Promise<Photo> {
+  const form = new FormData();
+  form.append('file', file);
+  return apiClient
+    .post<Photo>(`/admin/users/${id}/photos`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    .then((r) => r.data);
+}
+
+export function deleteUserPhoto(id: string, photoId: string): Promise<void> {
+  return apiClient.delete(`/admin/users/${id}/photos/${photoId}`).then(() => undefined);
+}
+
+export function setUserPrimaryPhoto(id: string, photoId: string): Promise<void> {
+  return apiClient.patch(`/admin/users/${id}/photos/${photoId}/primary`).then(() => undefined);
 }
 
 export function adjustWallet(id: string, amount: number, reason?: string): Promise<void> {

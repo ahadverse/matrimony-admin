@@ -2,7 +2,13 @@ export type Gender = 'male' | 'female';
 export type UserRole = 'user' | 'admin';
 export type UserStatus = 'active' | 'banned';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
-export type TransactionType = 'topup' | 'view_unlock' | 'refund' | 'admin_adjust' | 'spotlight';
+export type TransactionType =
+  | 'topup'
+  | 'view_unlock'
+  | 'refund'
+  | 'admin_adjust'
+  | 'spotlight'
+  | 'assistance_service';
 export type TransactionStatus = 'pending' | 'success' | 'failed';
 export type PaymentProvider = 'bkash' | 'nagad';
 export type PaymentVerificationMethod = 'automatic' | 'manual';
@@ -26,6 +32,13 @@ export interface ContactMessage {
 
 export type SortOrder = 'ASC' | 'DESC';
 
+export interface AssistantRequestPayment {
+  amount: number;
+  status: 'pending' | 'success' | 'failed';
+  payerAccountNumber: string | null;
+  trxId: string | null;
+}
+
 export interface AssistantRequest {
   id: string;
   name: string;
@@ -35,6 +48,8 @@ export interface AssistantRequest {
   /** Null when the lead reached the form without picking a plan card. */
   plan: AssistantRequestPlan | null;
   status: AssistantRequestStatus;
+  /** Set only when the lead submitted bKash payment proof — every current request has one, since unpaid submissions now land as a ContactMessage instead. */
+  payment: AssistantRequestPayment | null;
   createdAt: string;
 }
 
