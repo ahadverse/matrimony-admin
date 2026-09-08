@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 import {
@@ -203,25 +204,33 @@ export function Users() {
           <p className="mt-1 text-sm text-text-faint">Manage user accounts and access</p>
         </div>
 
-        <div className="flex w-full gap-1 rounded-lg border border-border bg-surface p-1 sm:w-auto">
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => {
-                setStatusFilter(f.value);
-                setPage(1);
-              }}
-              className={clsx(
-                'flex-1 rounded-md px-3 py-2.5 text-sm font-medium sm:flex-none sm:py-1.5',
-                statusFilter === f.value
-                  ? 'bg-primary text-white'
-                  : 'text-text-muted hover:text-text',
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className="flex w-full gap-1 rounded-lg border border-border bg-surface p-1 sm:w-auto">
+            {STATUS_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => {
+                  setStatusFilter(f.value);
+                  setPage(1);
+                }}
+                className={clsx(
+                  'flex-1 rounded-md px-3 py-2.5 text-sm font-medium sm:flex-none sm:py-1.5',
+                  statusFilter === f.value
+                    ? 'bg-primary text-white'
+                    : 'text-text-muted hover:text-text',
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <Link
+            to="/users/new"
+            className="flex min-h-10 w-full items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-light sm:min-h-0 sm:w-auto sm:py-2"
+          >
+            + Add user
+          </Link>
         </div>
       </header>
 

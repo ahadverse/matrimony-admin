@@ -7,6 +7,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Approvals } from './pages/Approvals';
 import { Verification } from './pages/Verification';
 import { Users } from './pages/Users';
+import { AddUser } from './pages/AddUser';
 import { PendingTopups } from './pages/PendingTopups';
 import { SupportChat } from './pages/SupportChat';
 import { AssistantRequests } from './pages/AssistantRequests';
@@ -58,6 +59,16 @@ function App() {
             <ProtectedRoute>
               <AppShell>
                 <Users />
+              </AppShell>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/users/new"
+          element={
+            <ProtectedRoute>
+              <AppShell>
+                <AddUser />
               </AppShell>
             </ProtectedRoute>
           }

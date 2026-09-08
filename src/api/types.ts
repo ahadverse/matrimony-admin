@@ -332,6 +332,18 @@ export interface AdminUpdateUserPayload {
   profile?: AdminUpdateProfilePayload;
 }
 
+export interface AdminCreateUserPayload {
+  email: string;
+  /** Plaintext — hashed server-side before it ever reaches the database. */
+  password: string;
+  phone?: string;
+  gender?: Gender;
+  dob?: string;
+  status?: UserStatus;
+  languagePref?: string;
+  profile?: AdminUpdateProfilePayload;
+}
+
 export interface AdminStats {
   totalUsers: number;
   pendingApprovals: number;

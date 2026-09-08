@@ -1,5 +1,6 @@
 import { apiClient } from './client';
 import type {
+  AdminCreateUserPayload,
   AdminSettings,
   AdminStats,
   AdminUpdateUserPayload,
@@ -171,6 +172,10 @@ export function getUserFilterOptions(district?: string): Promise<AdminUserFilter
 
 export function getUserDetail(id: string): Promise<AdminUserDetail> {
   return apiClient.get<AdminUserDetail>(`/admin/users/${id}`).then((r) => r.data);
+}
+
+export function createUser(payload: AdminCreateUserPayload): Promise<AdminUserDetail> {
+  return apiClient.post<AdminUserDetail>('/admin/users', payload).then((r) => r.data);
 }
 
 export function updateUser(id: string, payload: AdminUpdateUserPayload): Promise<AdminUserDetail> {
