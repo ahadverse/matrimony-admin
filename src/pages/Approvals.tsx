@@ -18,6 +18,7 @@ import { Modal } from '../components/Modal';
 import { SearchInput } from '../components/SearchInput';
 import { SelectCheckbox } from '../components/SelectCheckbox';
 import { UserDetailModal } from '../components/UserDetailModal';
+import { UserEditModal } from '../components/UserEditModal';
 import { EmailChannel, PhoneChannel } from '../components/ContactActions';
 import {
   Field,
@@ -68,6 +69,7 @@ export function Approvals() {
   const [sortChoice, setSortChoice] = useState<SortChoice>('createdAt_ASC');
   const [rejectTarget, setRejectTarget] = useState<Profile | null>(null);
   const [detailUserId, setDetailUserId] = useState<string | null>(null);
+  const [editUserId, setEditUserId] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const queryClient = useQueryClient();
@@ -255,6 +257,7 @@ export function Approvals() {
                 onApprove={() => approveMutation.mutate(profile.id)}
                 onReject={() => setRejectTarget(profile)}
                 onView={() => setDetailUserId(profile.userId)}
+                onEdit={() => setEditUserId(profile.userId)}
               />
             ))}
           </div>
@@ -291,7 +294,7 @@ export function Approvals() {
 
       {rejectTarget && (
         <RejectModal
-          profileName={rejectTarget.name}
+          profileName={rejectTarget.name.trim() || 'this profile'}
           isSubmitting={rejectMutation.isPending}
           onCancel={() => setRejectTarget(null)}
           onSubmit={(reason) => rejectMutation.mutate({ id: rejectTarget.id, reason })}
@@ -300,6 +303,20 @@ export function Approvals() {
 
       {detailUserId && (
         <UserDetailModal userId={detailUserId} onClose={() => setDetailUserId(null)} />
+      )}
+
+      {editUserId && (
+        <UserEditModal
+          userId={editUserId}
+          onClose={() => {
+            setEditUserId(null);
+            // The queue renders the name and the Incomplete/Approve state
+            // straight off this list, so it has to refetch once an admin has
+            // filled the profile in — otherwise Approve stays disabled against
+            // data that is no longer current.
+            invalidateAfterModeration();
+          }}
+        />
       )}
     </div>
   );
@@ -315,6 +332,7 @@ function ApprovalCard({
   onApprove,
   onReject,
   onView,
+  onEdit,
 }: {
   profile: Profile;
   selected: boolean;
@@ -325,14 +343,21 @@ function ApprovalCard({
   onApprove: () => void;
   onReject: () => void;
   onView: () => void;
+  onEdit: () => void;
 }) {
   const user = profile.user;
+  // Same definition the server enforces in approveProfile: no name means the
+  // member stopped after registration's first step, so there is nothing
+  // publishable here until an admin fills it in.
+  const isIncomplete = !profile.name?.trim();
   const primaryPhoto = profile.photos.find((p) => p.isPrimary) ?? profile.photos[0] ?? null;
   const photoUrl = resolveMediaUrl(primaryPhoto?.url);
   const age = calculateAge(user?.dob);
   const submitted = formatRelative(profile.createdAt);
 
-  const contactName = profile.name.split(' ')[0] || profile.name;
+  // Falls back to "there" so an incomplete profile's outreach reads
+  // "Hello there, …" rather than "Hello , …".
+  const contactName = profile.name.trim().split(' ')[0] || 'there';
   const waMessage = `Hello ${contactName}, this is Biye Kora Lagbe support regarding your profile submission${
     profile.publicId ? ` (${profile.publicId})` : ''
   }.`;
@@ -379,7 +404,9 @@ function ApprovalCard({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <h3 className="text-base font-semibold text-text">{profile.name}</h3>
+            <h3 className="text-base font-semibold text-text">
+              {profile.name || <span className="italic text-text-faint">No name yet</span>}
+            </h3>
             {profile.publicId && (
               <span className="rounded bg-surface-raised px-1.5 py-0.5 font-mono text-xs text-text-faint">
                 {profile.publicId}
@@ -390,6 +417,7 @@ function ApprovalCard({
               <span className="text-sm capitalize text-text-faint">{user.gender}</span>
             )}
             <Badge tone="gold">pending</Badge>
+            {isIncomplete && <Badge tone="danger">Incomplete</Badge>}
             {user?.status === 'banned' && <Badge tone="danger">banned</Badge>}
             {profile.isVerified && <Badge tone="primary">verified</Badge>}
           </div>
@@ -478,8 +506,20 @@ function ApprovalCard({
           </button>
           <button
             type="button"
+            onClick={onEdit}
+            className="min-h-10 flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted hover:bg-surface-raised hover:text-text sm:min-h-0 sm:flex-none"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
             onClick={onApprove}
-            disabled={isApproving}
+            disabled={isApproving || isIncomplete}
+            title={
+              isIncomplete
+                ? 'This profile has no name yet — use Edit to fill in the details, then approve.'
+                : undefined
+            }
             className="min-h-10 flex-1 rounded-lg bg-success/15 px-4 py-2 text-sm font-semibold text-success hover:enabled:bg-success/25 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-0 sm:flex-none"
           >
             {isApproving ? 'Approving…' : 'Approve'}

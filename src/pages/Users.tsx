@@ -436,7 +436,16 @@ export function Users() {
                     </button>
                   </td>
                   <td className="px-4 py-3 text-text-muted">
-                    {user.profile?.name ?? <span className="text-text-faint">No profile</span>}
+                    {user.profile ? (
+                      user.profile.name || (
+                        // Registration creates the profile row up front, nameless, and
+                        // fills the name in on the wizard's second screen — an empty
+                        // name means the member stopped after step one.
+                        <Badge tone="danger">Incomplete</Badge>
+                      )
+                    ) : (
+                      <span className="text-text-faint">No profile</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-text-muted">
                     {user.profile

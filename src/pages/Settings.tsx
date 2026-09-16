@@ -63,9 +63,7 @@ export function Settings() {
       bkashMerchantNumber !== query.data.bkashMerchantNumber ||
       smsTemplateOtpRegister !== query.data.smsTemplateOtpRegister ||
       smsTemplateOtpLogin !== query.data.smsTemplateOtpLogin ||
-      smsTemplateOtpReset !== query.data.smsTemplateOtpReset || 
-      bkashMerchantNumber !== query?.data?.bkashMerchantNumber);
-      whatsappNumber !== (query?.data?.whatsappNumber ?? '');
+      smsTemplateOtpReset !== query.data.smsTemplateOtpReset);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -106,7 +104,12 @@ export function Settings() {
       smsTemplateOtpRegister,
       smsTemplateOtpLogin,
       smsTemplateOtpReset,
-      ...(trimmedWhatsapp ? { whatsappNumber: trimmedWhatsapp } : {}),
+      // Always sent, even empty — that's how the admin clears the number and
+      // hides the public site's WhatsApp float button. bKash merchant number
+      // stays conditional below: unlike WhatsApp it's a required field with a
+      // default server-side, so an empty submission is left alone rather than
+      // cleared.
+      whatsappNumber: trimmedWhatsapp,
       ...(trimmedBkashMerchant ? { bkashMerchantNumber: trimmedBkashMerchant } : {}),
     });
   }
