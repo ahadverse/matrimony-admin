@@ -22,7 +22,7 @@ import {
   AnalyticsIcon,
   ApprovalsIcon,
   AssistantIcon,
-  BellIcon,
+  // BellIcon, // used only by the commented-out Pending bKash nav item below
   ChatIcon,
   DashboardIcon,
   InboxIcon,
@@ -41,7 +41,7 @@ const NAV_ITEMS = [
   { to: '/approvals', label: 'Approvals', icon: ApprovalsIcon },
   { to: '/verification', label: 'Verification', icon: VerificationIcon },
   { to: '/users', label: 'Users', icon: UsersIcon },
-  { to: '/pending-topups', label: 'Pending bKash', icon: BellIcon },
+  // { to: '/pending-topups', label: 'Pending bKash', icon: BellIcon },
   { to: '/support-chat', label: 'Support Chat', icon: ChatIcon },
   { to: '/assistant-requests', label: 'Assistant Requests', icon: AssistantIcon },
   { to: '/contact-messages', label: 'Contact Messages', icon: InboxIcon },
