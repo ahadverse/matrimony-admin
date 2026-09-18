@@ -13,7 +13,10 @@ import { SupportChat } from './pages/SupportChat';
 import { AssistantRequests } from './pages/AssistantRequests';
 import { ContactMessages } from './pages/ContactMessages';
 import { Transactions } from './pages/Transactions';
+import { Expenses } from './pages/Expenses';
 import { SendSms } from './pages/SendSms';
+import { BulkSms } from './pages/BulkSms';
+import { SmsSettings } from './pages/SmsSettings';
 import { SmsAnalytics } from './pages/SmsAnalytics';
 import { Settings } from './pages/Settings';
 
@@ -124,6 +127,16 @@ function App() {
           }
         />
         <Route
+          path="/expenses"
+          element={
+            <ProtectedRoute>
+              <AppShell>
+                <Expenses />
+              </AppShell>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/sms"
           element={
             <ProtectedRoute>
@@ -134,7 +147,27 @@ function App() {
           }
         />
         <Route
-          path="/sms-analytics"
+          path="/sms/marketing"
+          element={
+            <ProtectedRoute>
+              <AppShell>
+                <BulkSms />
+              </AppShell>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sms/settings"
+          element={
+            <ProtectedRoute>
+              <AppShell>
+                <SmsSettings />
+              </AppShell>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sms/analytics"
           element={
             <ProtectedRoute>
               <AppShell>
@@ -143,6 +176,10 @@ function App() {
             </ProtectedRoute>
           }
         />
+        {/* The flat paths these screens used to live at, kept working so a
+            bookmark or a link in an old message still lands on the page. */}
+        <Route path="/sms-marketing" element={<Navigate to="/sms/marketing" replace />} />
+        <Route path="/sms-analytics" element={<Navigate to="/sms/analytics" replace />} />
         <Route
           path="/settings"
           element={

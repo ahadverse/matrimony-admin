@@ -2,6 +2,10 @@ import { apiClient } from './client';
 import type {
   AdminCreateUserPayload,
   AdminSettings,
+  TransactionType,
+  BulkSmsAudience,
+  BulkSmsPreview,
+  BulkSmsResult,
   AdminStats,
   AdminUpdateUserPayload,
   AdminUserDetail,
@@ -224,6 +228,8 @@ export interface ListTransactionsParams {
   pageSize: number;
   userId?: string;
   type?: string;
+  /** Restricts the whole result set to these types — how the ledger is split between the Transactions and Expenses pages. */
+  types?: TransactionType[];
   status?: string;
   search?: string;
   from?: string;
@@ -232,11 +238,16 @@ export interface ListTransactionsParams {
   sortOrder?: SortOrder;
 }
 
-export function getTransactions(
-  params: ListTransactionsParams,
-): Promise<Paginated<WalletTransaction>> {
+export function getTransactions({
+  types,
+  ...params
+}: ListTransactionsParams): Promise<Paginated<WalletTransaction>> {
   return apiClient
-    .get<Paginated<WalletTransaction>>('/admin/transactions', { params })
+    .get<Paginated<WalletTransaction>>('/admin/transactions', {
+      // Sent as one comma-separated value rather than repeated `types=` pairs,
+      // which is what the API parses.
+      params: { ...params, types: types?.length ? types.join(',') : undefined },
+    })
     .then((r) => r.data);
 }
 
@@ -369,6 +380,22 @@ export function updateSettings(payload: {
   smsTemplateOtpRegister?: string;
   smsTemplateOtpLogin?: string;
   smsTemplateOtpReset?: string;
+  smsAutoInterestEnabled?: boolean;
+  smsTemplateNewInterest?: string;
+  smsAutoMessageEnabled?: boolean;
+  smsTemplateNewMessage?: string;
 }): Promise<AdminSettings> {
   return apiClient.patch<AdminSettings>('/admin/settings', payload).then((r) => r.data);
+}
+
+/** Resolves a campaign audience without sending, so the reach is known before any money is spent. */
+export function previewBulkSms(payload: { audience: BulkSmsAudience }): Promise<BulkSmsPreview> {
+  return apiClient.post<BulkSmsPreview>('/admin/sms/bulk/preview', payload).then((r) => r.data);
+}
+
+export function sendBulkSms(payload: {
+  audience: BulkSmsAudience;
+  message: string;
+}): Promise<BulkSmsResult> {
+  return apiClient.post<BulkSmsResult>('/admin/sms/bulk/send', payload).then((r) => r.data);
 }

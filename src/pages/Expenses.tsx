@@ -1,24 +1,17 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import toast from 'react-hot-toast';
 import clsx from 'clsx';
-import { bulkDeleteTransactions, getTransactions } from '../api/admin';
-import { apiErrorMessage } from '../api/client';
+import { getTransactions } from '../api/admin';
 import { Badge } from '../components/Badge';
-import { BulkActionBar } from '../components/BulkActionBar';
-import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Pagination } from '../components/Pagination';
 import { SearchInput } from '../components/SearchInput';
-import { SelectCheckbox } from '../components/SelectCheckbox';
 import { SortableTh } from '../components/SortableTh';
 import { SpinnerIcon } from '../components/icons';
 import { usePageSize } from '../hooks/usePageSize';
-import { useRowSelection } from '../hooks/useRowSelection';
-import { reportBulkDelete } from '../lib/bulkDelete';
+import { EXPENSE_TYPES, TYPE_LABEL } from '../lib/walletLedger';
 import type { BadgeTone } from '../components/Badge';
 import type { SortOrder, TransactionStatus, TransactionType } from '../api/types';
-import { CREDIT_TYPES, TYPE_LABEL } from '../lib/walletLedger';
 
 const TAKA = new Intl.NumberFormat('en-BD');
 
@@ -33,16 +26,25 @@ type StatusFilter = 'all' | TransactionStatus;
 
 const selectClass =
   'w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:w-auto sm:py-2';
-// `min-w-0 flex-1` lets the two date fields share one row on a phone instead of overflowing.
 const dateInputClass =
   'min-w-0 flex-1 rounded-lg border border-border bg-surface px-2.5 py-2.5 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:flex-none sm:py-2';
 
-export function Transactions() {
+/**
+ * What members spend: profile unlocks, spotlights and assistance-service
+ * purchases. The money-in side of the same ledger — top-ups, refunds and admin
+ * adjustments — is the Transactions page.
+ *
+ * Read-only on purpose. Transactions offers bulk delete for clearing out failed
+ * payment attempts; a spend record is the counterpart to something a member
+ * actually received, so deleting one here would only make the books disagree
+ * with what they were given.
+ */
+export function Expenses() {
   const [searchParams, setSearchParams] = useSearchParams();
   const userIdParam = searchParams.get('userId');
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = usePageSize('transactions');
+  const [pageSize, setPageSize] = usePageSize('expenses');
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -50,13 +52,11 @@ export function Transactions() {
   const [to, setTo] = useState('');
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState<SortOrder>('DESC');
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: [
       'admin',
-      'transactions',
+      'expenses',
       page,
       pageSize,
       userIdParam,
@@ -73,9 +73,9 @@ export function Transactions() {
         page,
         pageSize,
         userId: userIdParam ?? undefined,
-        // Bounded server-side, not filtered after the fact, so the count and
-        // pagination describe the money-in ledger rather than the whole table.
-        types: [...CREDIT_TYPES],
+        // Bounded server-side so the count and pagination describe spending
+        // only, not the whole wallet ledger.
+        types: [...EXPENSE_TYPES],
         type: typeFilter === 'all' ? undefined : typeFilter,
         status: statusFilter === 'all' ? undefined : statusFilter,
         search: search || undefined,
@@ -97,11 +97,6 @@ export function Transactions() {
     setPage(1);
   }
 
-  function handleSearch(value: string) {
-    setSearch(value);
-    setPage(1);
-  }
-
   function clearUserFilter() {
     const next = new URLSearchParams(searchParams);
     next.delete('userId');
@@ -109,38 +104,29 @@ export function Transactions() {
     setPage(1);
   }
 
-  const transactions = query.data?.items ?? [];
-  const selection = useRowSelection(transactions.map((tx) => tx.id));
+  const expenses = query.data?.items ?? [];
 
-  // How much of the selection actually moved money — quoted in the confirmation
-  // so the warning about balances is concrete rather than theoretical.
-  const settledSelected = transactions.filter(
-    (tx) => selection.isSelected(tx.id) && tx.status === 'success',
-  ).length;
-
-  const deleteMutation = useMutation({
-    mutationFn: () => bulkDeleteTransactions(selection.selectedIds),
-    onSuccess: (result) => {
-      reportBulkDelete(result, 'transaction');
-      setConfirmingDelete(false);
-      selection.clear();
-      queryClient.invalidateQueries({ queryKey: ['admin', 'transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
-    },
-    onError: (error) =>
-      toast.error(apiErrorMessage(error, 'Could not delete the selected transactions')),
-  });
+  // Unlocks and spotlights are stored as wallet debits (negative), while an
+  // assistance-service purchase is a positive bKash payment that never touched
+  // the wallet. Both are money the member spent, so the magnitude is what this
+  // page reports — and the page total is labelled as such, because summing
+  // every page would need a server-side total this endpoint does not return.
+  const pageTotal = expenses
+    .filter((tx) => tx.status === 'success')
+    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-xl font-semibold text-text sm:text-2xl">Transactions</h1>
-        <p className="mt-1 text-sm text-text-faint">Wallet activity across the platform</p>
+        <h1 className="text-xl font-semibold text-text sm:text-2xl">Expenses</h1>
+        <p className="mt-1 text-sm text-text-faint">
+          What members spend — profile unlocks, spotlights and assistance service
+        </p>
       </header>
 
       {userIdParam && (
         <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2.5 text-sm text-primary">
-          <span>Showing transactions for one user only</span>
+          <span>Showing expenses for one user only</span>
           <button
             type="button"
             onClick={clearUserFilter}
@@ -153,7 +139,10 @@ export function Transactions() {
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <SearchInput
-          onSearch={handleSearch}
+          onSearch={(value) => {
+            setSearch(value);
+            setPage(1);
+          }}
           placeholder="Search by phone or name…"
           className="w-full sm:w-64"
         />
@@ -166,7 +155,7 @@ export function Transactions() {
           className={selectClass}
         >
           <option value="all">All types</option>
-          {CREDIT_TYPES.map((value) => (
+          {EXPENSE_TYPES.map((value) => (
             <option key={value} value={value}>
               {TYPE_LABEL[value]}
             </option>
@@ -186,11 +175,11 @@ export function Transactions() {
           <option value="failed">Failed</option>
         </select>
         <div className="flex w-full items-center gap-1.5 text-sm text-text-muted sm:w-auto">
-          <label htmlFor="tx-from" className="shrink-0 text-text-faint">
+          <label htmlFor="ex-from" className="shrink-0 text-text-faint">
             From
           </label>
           <input
-            id="tx-from"
+            id="ex-from"
             type="date"
             value={from}
             onChange={(e) => {
@@ -199,11 +188,11 @@ export function Transactions() {
             }}
             className={dateInputClass}
           />
-          <label htmlFor="tx-to" className="shrink-0 text-text-faint">
+          <label htmlFor="ex-to" className="shrink-0 text-text-faint">
             To
           </label>
           <input
-            id="tx-to"
+            id="ex-to"
             type="date"
             value={to}
             onChange={(e) => {
@@ -223,20 +212,20 @@ export function Transactions() {
 
       {query.isError && (
         <p className="mb-4 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
-          Failed to load transactions. Please refresh.
+          Failed to load expenses. Please refresh.
         </p>
       )}
 
-      <BulkActionBar
-        count={selection.count}
-        noun="transaction"
-        allSelected={selection.allSelected}
-        someSelected={selection.someSelected}
-        onToggleAll={selection.toggleAll}
-        onClear={selection.clear}
-        onDelete={() => setConfirmingDelete(true)}
-        isDeleting={deleteMutation.isPending}
-      />
+      {query.data && query.data.total > 0 && (
+        <div className="mb-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-lg border border-border bg-surface px-4 py-3">
+          <span className="text-sm text-text-muted">Settled on this page</span>
+          <span className="text-lg font-semibold text-text">৳{TAKA.format(pageTotal)}</span>
+          <span className="text-xs text-text-faint">
+            across {query.data.total.toLocaleString()} matching record
+            {query.data.total === 1 ? '' : 's'}
+          </span>
+        </div>
+      )}
 
       <div
         className={clsx(
@@ -244,19 +233,11 @@ export function Transactions() {
           query.isFetching && !query.isLoading && 'opacity-60',
         )}
       >
-        <table className="w-full min-w-[1030px] text-left text-sm">
+        <table className="w-full min-w-[900px] text-left text-sm">
           <thead>
             <tr className="border-b border-border text-xs uppercase tracking-wide text-text-faint">
-              <th className="w-10 px-4 py-3">
-                <SelectCheckbox
-                  checked={selection.allSelected}
-                  indeterminate={selection.someSelected}
-                  onChange={selection.toggleAll}
-                  label="Select all transactions on this page"
-                />
-              </th>
               <th className="px-4 py-3 font-medium">User</th>
-              <th className="px-4 py-3 font-medium">Type</th>
+              <th className="px-4 py-3 font-medium">Spent on</th>
               <SortableTh
                 label="Amount"
                 sortKey="amount"
@@ -265,8 +246,7 @@ export function Transactions() {
                 onSort={handleSort}
               />
               <th className="px-4 py-3 font-medium">Balance after</th>
-              <th className="px-4 py-3 font-medium">Provider</th>
-              <th className="px-4 py-3 font-medium">Reference</th>
+              <th className="px-4 py-3 font-medium">Paid via</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <SortableTh
                 label="Date"
@@ -280,32 +260,19 @@ export function Transactions() {
           <tbody>
             {query.isLoading ? (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-text-faint">
-                  Loading transactions…
+                <td colSpan={7} className="px-4 py-10 text-center text-text-faint">
+                  Loading expenses…
                 </td>
               </tr>
-            ) : transactions.length === 0 ? (
+            ) : expenses.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-text-faint">
-                  No transactions match these filters.
+                <td colSpan={7} className="px-4 py-10 text-center text-text-faint">
+                  No expenses match these filters.
                 </td>
               </tr>
             ) : (
-              transactions.map((tx) => (
-                <tr
-                  key={tx.id}
-                  className={clsx(
-                    'border-b border-border last:border-0',
-                    selection.isSelected(tx.id) && 'bg-primary/5',
-                  )}
-                >
-                  <td className="px-4 py-3">
-                    <SelectCheckbox
-                      checked={selection.isSelected(tx.id)}
-                      onChange={() => selection.toggle(tx.id)}
-                      label={`Select transaction ${tx.id}`}
-                    />
-                  </td>
+              expenses.map((tx) => (
+                <tr key={tx.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3">
                     {tx.user ? (
                       <>
@@ -319,28 +286,30 @@ export function Transactions() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-text">{TYPE_LABEL[tx.type] ?? tx.type}</td>
-                  <td
-                    className={clsx(
-                      'px-4 py-3 font-medium',
-                      tx.amount < 0 ? 'text-danger' : 'text-success',
-                    )}
-                  >
-                    {tx.amount < 0 ? '−' : '+'}৳{TAKA.format(Math.abs(tx.amount))}
-                  </td>
-                  <td className="px-4 py-3 text-text-muted">৳{TAKA.format(tx.balanceAfter)}</td>
-                  <td className="px-4 py-3 capitalize text-text-muted">
-                    {tx.provider ?? <span className="text-text-faint">—</span>}
+                  <td className="px-4 py-3 font-medium text-danger">
+                    ৳{TAKA.format(Math.abs(tx.amount))}
                   </td>
                   <td className="px-4 py-3 text-text-muted">
-                    {tx.providerTransactionId ? (
+                    {/* An assistance-service purchase is paid straight to bKash,
+                        so it has no meaningful wallet balance to report. */}
+                    {tx.provider ? (
+                      <span className="text-text-faint">—</span>
+                    ) : (
+                      `৳${TAKA.format(tx.balanceAfter)}`
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-text-muted">
+                    {tx.provider ? (
                       <>
-                        <div className="font-mono text-xs">{tx.providerTransactionId}</div>
-                        {tx.payerAccountNumber && (
-                          <div className="text-xs text-text-faint">from {tx.payerAccountNumber}</div>
+                        <div className="capitalize">{tx.provider}</div>
+                        {tx.providerTransactionId && (
+                          <div className="font-mono text-xs text-text-faint">
+                            {tx.providerTransactionId}
+                          </div>
                         )}
                       </>
                     ) : (
-                      <span className="text-text-faint">—</span>
+                      <span className="text-text-faint">Wallet</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -372,33 +341,11 @@ export function Transactions() {
                 setPageSize(size);
                 setPage(1);
               }}
-              idPrefix="transactions"
+              idPrefix="expenses"
             />
           </div>
         )}
       </div>
-
-      {confirmingDelete && (
-        <ConfirmDialog
-          title={`Delete ${selection.count} transaction${selection.count === 1 ? '' : 's'}`}
-          message={
-            `Permanently delete the ${selection.count} selected ledger ${
-              selection.count === 1 ? 'entry' : 'entries'
-            }?` +
-            (settledSelected > 0
-              ? ` ${settledSelected} of them ${
-                  settledSelected === 1 ? 'is a settled transaction' : 'are settled transactions'
-                }. Wallet balances are stored separately and are NOT adjusted — deleting these removes the record of how a balance was reached without changing the balance itself.`
-              : '') +
-            ' This cannot be undone.'
-          }
-          confirmLabel="Delete permanently"
-          tone="danger"
-          isLoading={deleteMutation.isPending}
-          onConfirm={() => deleteMutation.mutate()}
-          onCancel={() => setConfirmingDelete(false)}
-        />
-      )}
     </div>
   );
 }

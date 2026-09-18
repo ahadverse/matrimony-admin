@@ -228,7 +228,46 @@ export interface AdminSettings {
   smsTemplateOtpRegister: string;
   smsTemplateOtpLogin: string;
   smsTemplateOtpReset: string;
+  smsAutoInterestEnabled: boolean;
+  smsTemplateNewInterest: string;
+  smsAutoMessageEnabled: boolean;
+  smsTemplateNewMessage: string;
   updatedAt: string;
+}
+
+/**
+ * How a campaign picks its recipients. `filter` matches members on their
+ * profile; `list` takes numbers typed, pasted or read out of a CSV in the
+ * browser (the API never sees the file).
+ */
+export type BulkSmsAudienceMode = 'filter' | 'list';
+
+export interface BulkSmsFilters {
+  district?: string;
+  gender?: Gender;
+  ageMin?: number;
+  ageMax?: number;
+  status?: UserStatus;
+  approvalStatus?: ApprovalStatus;
+}
+
+export interface BulkSmsAudience {
+  mode: BulkSmsAudienceMode;
+  filters?: BulkSmsFilters;
+  phones?: string[];
+}
+
+export interface BulkSmsPreview {
+  total: number;
+  /** A handful of the resolved numbers, so an admin can sanity-check the audience. */
+  sample: string[];
+}
+
+export interface BulkSmsResult {
+  success: boolean;
+  total: number;
+  sent: number;
+  failed: number;
 }
 
 /** `skipped` is a message that was never handed to a gateway because `SMS_ENABLED` is off server-side. */

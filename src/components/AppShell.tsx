@@ -19,7 +19,6 @@ import {
   getVerificationSubmissions,
 } from '../api/admin';
 import {
-  AnalyticsIcon,
   ApprovalsIcon,
   AssistantIcon,
   // BellIcon, // used only by the commented-out Pending bKash nav item below
@@ -36,7 +35,31 @@ import {
   XIcon,
 } from './icons';
 
-const NAV_ITEMS = [
+type NavIcon = (props: { className?: string }) => ReactNode;
+
+interface NavLeaf {
+  to: string;
+  label: string;
+  icon: NavIcon;
+}
+
+interface NavGroup {
+  label: string;
+  icon: NavIcon;
+  /** Children carry no icon of their own — the group's icon speaks for the set. */
+  children: { to: string; label: string }[];
+}
+
+type NavEntry = NavLeaf | NavGroup;
+
+function isGroup(entry: NavEntry): entry is NavGroup {
+  return 'children' in entry;
+}
+
+// Annotated rather than `satisfies`: the inferred literal union does not narrow
+// cleanly through `isGroup`, which leaves `entry.to` possibly-undefined in the
+// leaf branch.
+const NAV_ITEMS: NavEntry[] = [
   { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
   { to: '/approvals', label: 'Approvals', icon: ApprovalsIcon },
   { to: '/verification', label: 'Verification', icon: VerificationIcon },
@@ -45,9 +68,34 @@ const NAV_ITEMS = [
   { to: '/support-chat', label: 'Support Chat', icon: ChatIcon },
   { to: '/assistant-requests', label: 'Assistant Requests', icon: AssistantIcon },
   { to: '/contact-messages', label: 'Contact Messages', icon: InboxIcon },
-  { to: '/transactions', label: 'Transactions', icon: TransactionsIcon },
-  { to: '/sms', label: 'Send SMS', icon: SmsIcon },
-  { to: '/sms-analytics', label: 'SMS Analytics', icon: AnalyticsIcon },
+  // One wallet ledger, read from two directions — money in, and what members
+  // spend it on. Grouped so the sidebar says there are two halves rather than
+  // leaving an admin to guess which page a given record landed on.
+  //
+  // The paths stay flat (/transactions, /expenses) because UserDetailModal
+  // links straight to /transactions?userId=… — nesting the URLs would break
+  // that for no gain, since the grouping is a navigation idea, not a routing one.
+  {
+    label: 'Finance',
+    icon: TransactionsIcon,
+    children: [
+      { to: '/transactions', label: 'Transactions' },
+      { to: '/expenses', label: 'Expenses' },
+    ],
+  },
+  // A group rather than four siblings: SMS now has its own compose, campaign,
+  // configuration and reporting screens, and four flat entries buried the rest
+  // of the sidebar under one feature.
+  {
+    label: 'SMS',
+    icon: SmsIcon,
+    children: [
+      { to: '/sms', label: 'Send SMS' },
+      { to: '/sms/marketing', label: 'Marketing' },
+      { to: '/sms/settings', label: 'Templates & automation' },
+      { to: '/sms/analytics', label: 'Analytics' },
+    ],
+  },
   { to: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
 
@@ -138,7 +186,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   const totalAlerts = Object.values(navBadgeCounts).reduce((sum, n) => sum + n, 0);
-  const activeLabel = NAV_ITEMS.find((item) => pathname.startsWith(item.to))?.label ?? 'Admin';
+  // The mobile header names the current page, so a group's child has to be
+  // matched before the group itself — "Marketing" is more use up there than
+  // "SMS". Longest match wins, so /sms/marketing does not resolve to /sms.
+  const activeLabel =
+    NAV_ITEMS.flatMap((entry) =>
+      isGroup(entry) ? entry.children : [{ to: entry.to, label: entry.label }],
+    )
+      .filter((leaf) => pathname === leaf.to || pathname.startsWith(leaf.to + '/'))
+      .sort((a, b) => b.to.length - a.to.length)[0]?.label ?? 'Admin';
 
   return (
     <div className="flex min-h-svh bg-bg text-text">
@@ -178,12 +234,24 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
-            const badgeCount = navBadgeCounts[to] ?? 0;
+          {NAV_ITEMS.map((entry) => {
+            if (isGroup(entry)) {
+              return (
+                <NavGroupItem
+                  key={entry.label}
+                  group={entry}
+                  pathname={pathname}
+                  onNavigate={() => setNavOpen(false)}
+                />
+              );
+            }
+
+            const badgeCount = navBadgeCounts[entry.to] ?? 0;
+            const Icon = entry.icon;
             return (
               <NavLink
-                key={to}
-                to={to}
+                key={entry.to}
+                to={entry.to}
                 className={({ isActive }) =>
                   clsx(
                     'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium',
@@ -194,7 +262,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 }
               >
                 <Icon className="h-[18px] w-[18px] shrink-0" />
-                <span className="flex-1">{label}</span>
+                <span className="flex-1">{entry.label}</span>
                 {badgeCount > 0 && (
                   <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-danger px-1.5 text-[11px] font-semibold text-white">
                     {badgeCount > 99 ? '99+' : badgeCount}
@@ -249,5 +317,95 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 lg:px-8 lg:py-8">{children}</div>
       </main>
     </div>
+  );
+}
+
+/**
+ * A collapsible sidebar group.
+ *
+ * It opens itself whenever the current route is one of its children, so
+ * arriving by link or refresh never leaves the active page hidden inside a
+ * closed group; beyond that the admin's own toggling wins, which is why the
+ * open state is seeded from the route rather than bound to it.
+ */
+function NavGroupItem({
+  group,
+  pathname,
+  onNavigate,
+}: {
+  group: NavGroup;
+  pathname: string;
+  onNavigate: () => void;
+}) {
+  const holdsActiveRoute = group.children.some(
+    (child) => pathname === child.to || pathname.startsWith(child.to + '/'),
+  );
+  const [open, setOpen] = useState(holdsActiveRoute);
+
+  useEffect(() => {
+    if (holdsActiveRoute) setOpen(true);
+  }, [holdsActiveRoute]);
+
+  const Icon = group.icon;
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((wasOpen) => !wasOpen)}
+        aria-expanded={open}
+        className={clsx(
+          'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium',
+          holdsActiveRoute && !open
+            ? 'bg-primary/10 text-primary-light'
+            : 'text-text-muted hover:bg-surface-raised hover:text-text',
+        )}
+      >
+        <Icon className="h-[18px] w-[18px] shrink-0" />
+        <span className="flex-1 text-left">{group.label}</span>
+        <ChevronIcon
+          className={clsx('h-4 w-4 shrink-0 transition-transform', open && 'rotate-90')}
+        />
+      </button>
+
+      {open && (
+        // Indented under a rule rather than by padding alone: the line is what
+        // makes four sub-items read as one set at a glance.
+        <div className="mt-1 ml-[26px] space-y-0.5 border-l border-border pl-3">
+          {group.children.map((child) => (
+            <NavLink
+              key={child.to}
+              to={child.to}
+              end
+              onClick={onNavigate}
+              className={({ isActive }) =>
+                clsx(
+                  'block rounded-lg px-3 py-2 text-sm',
+                  isActive
+                    ? 'bg-primary/15 font-medium text-primary-light'
+                    : 'text-text-muted hover:bg-surface-raised hover:text-text',
+                )
+              }
+            >
+              {child.label}
+            </NavLink>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChevronIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path
+        d="M7.5 5l5 5-5 5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

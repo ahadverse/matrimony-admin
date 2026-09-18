@@ -20,9 +20,6 @@ export function Settings() {
   const [statProfilesReviewedPercent, setStatProfilesReviewedPercent] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [bkashMerchantNumber, setBkashMerchantNumber] = useState('');
-  const [smsTemplateOtpRegister, setSmsTemplateOtpRegister] = useState('');
-  const [smsTemplateOtpLogin, setSmsTemplateOtpLogin] = useState('');
-  const [smsTemplateOtpReset, setSmsTemplateOtpReset] = useState('');
 
   useEffect(() => {
     if (query.data) {
@@ -35,9 +32,6 @@ export function Settings() {
       setStatProfilesReviewedPercent(query.data.statProfilesReviewedPercent);
       setWhatsappNumber(query.data.whatsappNumber ?? '');
       setBkashMerchantNumber(query.data.bkashMerchantNumber);
-      setSmsTemplateOtpRegister(query.data.smsTemplateOtpRegister);
-      setSmsTemplateOtpLogin(query.data.smsTemplateOtpLogin);
-      setSmsTemplateOtpReset(query.data.smsTemplateOtpReset);
     }
   }, [query.data]);
 
@@ -60,10 +54,7 @@ export function Settings() {
       statAverageRating !== query.data.statAverageRating ||
       statProfilesReviewedPercent !== query.data.statProfilesReviewedPercent ||
       whatsappNumber !== (query.data.whatsappNumber ?? '') ||
-      bkashMerchantNumber !== query.data.bkashMerchantNumber ||
-      smsTemplateOtpRegister !== query.data.smsTemplateOtpRegister ||
-      smsTemplateOtpLogin !== query.data.smsTemplateOtpLogin ||
-      smsTemplateOtpReset !== query.data.smsTemplateOtpReset);
+      bkashMerchantNumber !== query.data.bkashMerchantNumber);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -88,11 +79,6 @@ export function Settings() {
       toast.error('bKash merchant number must be a valid Bangladeshi mobile number, e.g. 01304082381');
       return;
     }
-    if (![smsTemplateOtpRegister, smsTemplateOtpLogin, smsTemplateOtpReset].every((t) => t.includes('{code}'))) {
-      toast.error('Each SMS template must include the {code} placeholder');
-      return;
-    }
-
     mutation.mutate({
       profileViewCost: cost,
       minTopupAmount: minTopup,
@@ -101,9 +87,6 @@ export function Settings() {
       statDistrictsCovered,
       statAverageRating,
       statProfilesReviewedPercent,
-      smsTemplateOtpRegister,
-      smsTemplateOtpLogin,
-      smsTemplateOtpReset,
       // Always sent, even empty — that's how the admin clears the number and
       // hides the public site's WhatsApp float button. bKash merchant number
       // stays conditional below: unlike WhatsApp it's a required field with a
@@ -125,9 +108,6 @@ export function Settings() {
     setStatProfilesReviewedPercent(query.data.statProfilesReviewedPercent);
     setWhatsappNumber(query.data.whatsappNumber ?? '');
     setBkashMerchantNumber(query.data.bkashMerchantNumber);
-    setSmsTemplateOtpRegister(query.data.smsTemplateOtpRegister);
-    setSmsTemplateOtpLogin(query.data.smsTemplateOtpLogin);
-    setSmsTemplateOtpReset(query.data.smsTemplateOtpReset);
   }
 
   return (
@@ -261,32 +241,6 @@ export function Settings() {
             </div>
           </div>
 
-          <div className="border-t border-border pt-5">
-            <h2 className="text-sm font-semibold text-text">SMS templates</h2>
-            <p className="mt-1 text-xs text-text-faint">
-              Use <code>{'{code}'}</code> and <code>{'{minutes}'}</code> as placeholders — they're
-              filled in with the actual OTP code and expiry when the SMS is sent.
-            </p>
-
-            <div className="mt-4 space-y-4">
-              <TemplateField
-                label="Registration OTP"
-                value={smsTemplateOtpRegister}
-                onChange={setSmsTemplateOtpRegister}
-              />
-              <TemplateField
-                label="Login OTP"
-                value={smsTemplateOtpLogin}
-                onChange={setSmsTemplateOtpLogin}
-              />
-              <TemplateField
-                label="Password reset OTP"
-                value={smsTemplateOtpReset}
-                onChange={setSmsTemplateOtpReset}
-              />
-            </div>
-          </div>
-
           <p className="text-xs text-text-faint">
             Last updated {new Date(query.data.updatedAt).toLocaleString('en-US')}
           </p>
@@ -310,30 +264,6 @@ export function Settings() {
           </div>
         </form>
       ) : null}
-    </div>
-  );
-}
-
-function TemplateField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-sm font-medium text-text-muted">{label}</label>
-      <textarea
-        rows={2}
-        maxLength={300}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2.5 text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-      />
-      <p className="mt-1 text-right text-xs text-text-faint">{value.length}/300</p>
     </div>
   );
 }
