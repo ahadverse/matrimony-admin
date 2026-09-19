@@ -127,6 +127,18 @@ function parseExportFilename(contentDisposition: unknown, fallback: string): str
   return match?.[1] ?? fallback;
 }
 
+/** Hands a fetched blob to the browser as a file download. */
+function saveBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 /** Downloads the verification-documents ZIP (one folder per user) via an authenticated blob fetch. */
 export async function exportVerifications(status?: VerificationStatus): Promise<void> {
   const res = await apiClient.get('/admin/verifications/export', {
@@ -137,19 +149,11 @@ export async function exportVerifications(status?: VerificationStatus): Promise<
     res.headers['content-disposition'],
     `verifications-export-${new Date().toISOString().slice(0, 10)}.zip`,
   );
-  const url = URL.createObjectURL(res.data as Blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+  saveBlob(res.data as Blob, filename);
 }
 
-export interface ListUsersParams {
-  page: number;
-  pageSize: number;
+/** Everything the Users page can narrow by — shared with the CSV export. */
+export interface UserFilterParams {
   status?: UserStatus;
   gender?: Gender;
   verified?: boolean;
@@ -158,12 +162,66 @@ export interface ListUsersParams {
   maritalStatus?: MaritalStatus;
   education?: string;
   search?: string;
+  /** Inclusive `YYYY-MM-DD` bounds on the join date; the same date in both means one day. */
+  joinedFrom?: string;
+  joinedTo?: string;
   sortBy?: string;
   sortOrder?: SortOrder;
 }
 
+export interface ListUsersParams extends UserFilterParams {
+  page: number;
+  pageSize: number;
+}
+
 export function getUsers(params: ListUsersParams): Promise<Paginated<AdminUserRecord>> {
   return apiClient.get<Paginated<AdminUserRecord>>('/admin/users', { params }).then((r) => r.data);
+}
+
+/** How many rows a CSV export wrote, and how many actually matched the filters. */
+export interface ExportUsersResult {
+  count: number;
+  total: number;
+}
+
+/**
+ * Downloads the filtered user list as a CSV.
+ *
+ * Nothing is saved when no user matches — the caller says so instead of
+ * dropping a header-only file in the admin's downloads folder.
+ *
+ * `filename` wins over the one the server suggests: the date bounds travel as
+ * UTC instants, so only the caller still knows which local dates the admin
+ * actually picked and can name the file after them.
+ */
+export async function exportUsers(
+  params: UserFilterParams,
+  filename?: string,
+): Promise<ExportUsersResult> {
+  const res = await apiClient.get('/admin/users/export', {
+    params,
+    responseType: 'blob',
+  });
+
+  const readCount = (header: string, fallback: number) => {
+    const parsed = Number(res.headers[header]);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+  // Falls back to -1 ("unknown") rather than 0, so a header stripped by a proxy
+  // is never mistaken for an empty result and made to suppress the download.
+  const count = readCount('x-export-count', -1);
+  const total = readCount('x-export-total', count);
+  if (count === 0) return { count, total };
+
+  saveBlob(
+    res.data as Blob,
+    filename ??
+      parseExportFilename(
+        res.headers['content-disposition'],
+        `users-${new Date().toISOString().slice(0, 10)}.csv`,
+      ),
+  );
+  return { count, total };
 }
 
 /** Passing a district narrows `subDistricts` to that district — the two dropdowns are dependent. */

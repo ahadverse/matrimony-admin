@@ -8,6 +8,7 @@ import {
   banUser,
   bulkDeleteUsers,
   deleteUser,
+  exportUsers,
   getUserFilterOptions,
   getUsers,
   unbanUser,
@@ -36,6 +37,14 @@ import { usePageSize } from '../hooks/usePageSize';
 import { useRowSelection } from '../hooks/useRowSelection';
 import { reportBulkDelete } from '../lib/bulkDelete';
 import { MARITAL_STATUSES } from '../lib/profileOptions';
+import {
+  EMPTY_DATE_RANGE,
+  isEmptyRange,
+  rangeExportFilename,
+  toJoinedRange,
+} from '../lib/dateRange';
+import type { DateRange } from '../lib/dateRange';
+import { DateRangePicker } from '../components/DateRangePicker';
 import { humanize } from '../components/ProfileDetails';
 
 const TAKA = new Intl.NumberFormat('en-BD');
@@ -64,6 +73,7 @@ export function Users() {
   const [subDistrictFilter, setSubDistrictFilter] = useState('');
   const [maritalFilter, setMaritalFilter] = useState('');
   const [educationFilter, setEducationFilter] = useState('');
+  const [joinedRange, setJoinedRange] = useState<DateRange>(EMPTY_DATE_RANGE);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState<SortOrder>('DESC');
@@ -75,38 +85,25 @@ export function Users() {
   const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
   const queryClient = useQueryClient();
 
+  // The one description of "which users" — the table and the CSV export both
+  // run it, so a download can never cover a different set than what is on screen.
+  const filters = {
+    status: statusFilter === 'all' ? undefined : statusFilter,
+    gender: genderFilter === 'all' ? undefined : genderFilter,
+    verified: verifiedFilter === 'all' ? undefined : verifiedFilter === 'true',
+    district: districtFilter || undefined,
+    subDistrict: subDistrictFilter || undefined,
+    maritalStatus: (maritalFilter as MaritalStatus) || undefined,
+    education: educationFilter || undefined,
+    search: search || undefined,
+    ...toJoinedRange(joinedRange),
+    sortBy,
+    sortOrder,
+  };
+
   const query = useQuery({
-    queryKey: [
-      'admin',
-      'users',
-      page,
-      pageSize,
-      statusFilter,
-      genderFilter,
-      verifiedFilter,
-      districtFilter,
-      subDistrictFilter,
-      maritalFilter,
-      educationFilter,
-      search,
-      sortBy,
-      sortOrder,
-    ],
-    queryFn: () =>
-      getUsers({
-        page,
-        pageSize,
-        status: statusFilter === 'all' ? undefined : statusFilter,
-        gender: genderFilter === 'all' ? undefined : genderFilter,
-        verified: verifiedFilter === 'all' ? undefined : verifiedFilter === 'true',
-        district: districtFilter || undefined,
-        subDistrict: subDistrictFilter || undefined,
-        maritalStatus: (maritalFilter as MaritalStatus) || undefined,
-        education: educationFilter || undefined,
-        search: search || undefined,
-        sortBy,
-        sortOrder,
-      }),
+    queryKey: ['admin', 'users', page, pageSize, filters],
+    queryFn: () => getUsers({ page, pageSize, ...filters }),
     placeholderData: (prev) => prev,
   });
 
@@ -158,6 +155,32 @@ export function Users() {
       toast.error(apiErrorMessage(error, 'Could not delete this user. Please try again.')),
   });
 
+  const exportMutation = useMutation({
+    mutationFn: () => exportUsers(filters, rangeExportFilename('users', joinedRange)),
+    onSuccess: ({ count, total }) => {
+      if (count === 0) {
+        toast.error('No users match these filters, so there was nothing to export.');
+        return;
+      }
+      // A count the server could not report (-1) still produced a file; say so
+      // plainly rather than quoting a made-up number.
+      if (count < 0) {
+        toast.success('Export downloaded');
+      } else {
+        toast.success(`Exported ${count.toLocaleString('en-US')} user${count === 1 ? '' : 's'}`);
+      }
+      if (count > 0 && total > count) {
+        toast(
+          `Only the first ${count.toLocaleString('en-US')} of ${total.toLocaleString(
+            'en-US',
+          )} matching users were exported. Narrow the date range to get the rest.`,
+          { duration: 8000 },
+        );
+      }
+    },
+    onError: (error) => toast.error(apiErrorMessage(error, 'Could not export the user list')),
+  });
+
   function handleSort(key: string) {
     if (sortBy === key) {
       setSortOrder((prev) => (prev === 'ASC' ? 'DESC' : 'ASC'));
@@ -176,7 +199,11 @@ export function Users() {
   const users = query.data?.items ?? [];
   const selection = useRowSelection(users.map((user) => user.id));
   const hasProfileFilters = Boolean(
-    districtFilter || subDistrictFilter || maritalFilter || educationFilter,
+    districtFilter ||
+      subDistrictFilter ||
+      maritalFilter ||
+      educationFilter ||
+      !isEmptyRange(joinedRange),
   );
 
   const bulkDeleteMutation = useMutation({
@@ -225,6 +252,17 @@ export function Users() {
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={() => exportMutation.mutate()}
+            disabled={exportMutation.isPending}
+            className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-text-muted hover:enabled:bg-surface-raised hover:enabled:text-text disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-0 sm:w-auto sm:py-2"
+          >
+            {exportMutation.isPending && (
+              <SpinnerIcon className="h-3.5 w-3.5 animate-spin" />
+            )}
+            {exportMutation.isPending ? 'Exporting…' : 'Export CSV'}
+          </button>
           <Link
             to="/users/new"
             className="flex min-h-10 w-full items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-light sm:min-h-0 sm:w-auto sm:py-2"
@@ -327,6 +365,14 @@ export function Users() {
             </option>
           ))}
         </select>
+        <DateRangePicker
+          label="Joined"
+          value={joinedRange}
+          onChange={(range) => {
+            setJoinedRange(range);
+            setPage(1);
+          }}
+        />
         {hasProfileFilters && (
           <button
             type="button"
@@ -335,6 +381,7 @@ export function Users() {
               setSubDistrictFilter('');
               setMaritalFilter('');
               setEducationFilter('');
+              setJoinedRange(EMPTY_DATE_RANGE);
               setPage(1);
             }}
             className="rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-text-muted hover:bg-surface-raised hover:text-text sm:py-2"
